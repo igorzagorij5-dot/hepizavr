@@ -578,11 +578,11 @@ function buildClientCardHTML(c) {
     const shadow= s==='present' ? '0 2px 8px rgba(76,175,80,.4)'
                 : s==='absent'  ? '0 2px 8px rgba(229,57,53,.4)'
                 : '0 2px 6px rgba(156,39,176,.15)';
-    return `<div style="width:40px;height:40px;border-radius:12px;background:\${bg};
+    return `<div style="width:40px;height:40px;border-radius:12px;background:${bg};
       display:flex;align-items:center;justify-content:center;flex-direction:column;
-      font-size:11px;font-weight:800;color:\${color};box-shadow:\${shadow}">
-      <span>\${icon}</span>
-      <span style="font-size:7px;opacity:.85;margin-top:1px">\${d}.\${mo}</span>
+      font-size:11px;font-weight:800;color:${color};box-shadow:${shadow}">
+      <span>${icon}</span>
+      <span style="font-size:7px;opacity:.85;margin-top:1px">${d}.${mo}</span>
     </div>`;
   }).join('');
 
@@ -590,13 +590,13 @@ function buildClientCardHTML(c) {
     ? `<div style="background:linear-gradient(135deg,#FFF9C4,#FFF176);color:#4E2A00;
         padding:12px 16px;border-radius:14px;font-size:13px;font-weight:700;
         text-align:center;margin-bottom:14px;box-shadow:0 2px 8px rgba(255,193,7,.3)">
-        🦕 Залишилось лише \${remain} заняття — поновіть абонемент!
+        🦕 Залишилось лише ${remain} заняття — поновіть абонемент!
       </div>` : '';
 
   const photoBlock = photo
     ? `<div style="width:80px;height:80px;border-radius:50%;border:4px solid rgba(255,255,255,.9);
         margin:0 auto 12px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.2)">
-        <img src="\${photo}" style="width:100%;height:100%;object-fit:cover">
+        <img src="${photo}" style="width:100%;height:100%;object-fit:cover">
       </div>`
     : `<div style="width:72px;height:72px;border-radius:50%;border:3px solid rgba(255,255,255,.7);
         margin:0 auto 12px;background:rgba(255,255,255,.2);
@@ -609,7 +609,7 @@ function buildClientCardHTML(c) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>HappyZavr — \${c.name}</title>
+<title>HappyZavr — ${c.name}</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -634,7 +634,7 @@ body{font-family:'Nunito',sans-serif;
 .remain-block{text-align:center;margin-bottom:18px;padding:20px 16px;
   background:linear-gradient(135deg,#fdf4ff,#f5f3ff);
   border-radius:20px;border:2px solid #e9d5ff}
-.remain-big{font-size:64px;font-weight:900;line-height:1;color:\${remColor};
+.remain-big{font-size:64px;font-weight:900;line-height:1;color:${remColor};
   text-shadow:0 2px 12px rgba(107,33,168,.2)}
 .remain-lbl{font-size:14px;color:#7C3AED;font-weight:700;margin-top:4px}
 .prog-wrap{margin-bottom:16px}
@@ -642,9 +642,9 @@ body{font-family:'Nunito',sans-serif;
 .prog-lbl{font-size:13px;color:#6B7280;font-weight:600}
 .prog-num{font-size:14px;font-weight:800;color:#4C1D95}
 .prog-bg{height:12px;background:#F3E8FF;border-radius:6px;overflow:hidden}
-.prog-fill{height:100%;border-radius:6px;background:\${barColor};width:\${pct}%}
+.prog-fill{height:100%;border-radius:6px;background:${barColor};width:${pct}%}
 .status{padding:12px;border-radius:16px;text-align:center;font-size:14px;font-weight:800;
-  margin-bottom:16px;background:\${stBg};color:\${stColor};
+  margin-bottom:16px;background:${stBg};color:${stColor};
   box-shadow:0 4px 12px rgba(0,0,0,.1)}
 .lessons-hdr{font-size:12px;font-weight:800;color:#9333EA;text-transform:uppercase;
   letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:6px}
@@ -664,32 +664,32 @@ body{font-family:'Nunito',sans-serif;
       <span class="star" style="left:70%;top:65%;animation-delay:.3s">✨</span>
       <span class="star" style="left:50%;top:10%;animation-delay:1s">⭐</span>
     </div>
-    \${photoBlock}
+    ${photoBlock}
     <div class="club-logo">🦕 HappyZavr</div>
-    <div class="name">\${c.name}</div>
-    <div class="dir-badge">🎯 \${c.direction}</div><br>
-    <div class="dates-badge">📅 \${c.startDate} → \${c.endDate}\${cross}</div>
+    <div class="name">${c.name}</div>
+    <div class="dir-badge">🎯 ${c.direction}</div><br>
+    <div class="dates-badge">📅 ${c.startDate} → ${c.endDate}${cross}</div>
   </div>
   <div class="body">
     <div class="remain-block">
-      <div class="remain-big">\${remain}</div>
+      <div class="remain-big">${remain}</div>
       <div class="remain-lbl">🎓 занять залишилось</div>
     </div>
     <div class="prog-wrap">
       <div class="prog-row">
         <span class="prog-lbl">✅ Відвідано занять</span>
-        <span class="prog-num">\${present} з \${total}</span>
+        <span class="prog-num">${present} з ${total}</span>
       </div>
       <div class="prog-bg"><div class="prog-fill"></div></div>
     </div>
-    <div class="status">\${stText}</div>
-    \${warnBlock}
+    <div class="status">${stText}</div>
+    ${warnBlock}
     <div class="lessons-hdr">🗓️ Відвідуваність</div>
-    <div class="dots">\${dots}</div>
+    <div class="dots">${dots}</div>
   </div>
   <div class="footer">
     🦕 HappyZavr · Картка оновлюється автоматично<br>
-    <span style="font-size:10px;opacity:.7">Оновлено: \${updatedAt}</span>
+    <span style="font-size:10px;opacity:.7">Оновлено: ${updatedAt}</span>
   </div>
 </div>
 </body>
