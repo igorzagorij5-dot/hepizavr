@@ -578,33 +578,33 @@ function buildClientCardHTML(c) {
     const shadow= s==='present' ? '0 2px 8px rgba(76,175,80,.4)'
                 : s==='absent'  ? '0 2px 8px rgba(229,57,53,.4)'
                 : '0 2px 6px rgba(156,39,176,.15)';
-    return \`<div style="width:40px;height:40px;border-radius:12px;background:\${bg};
+    return `<div style="width:40px;height:40px;border-radius:12px;background:\${bg};
       display:flex;align-items:center;justify-content:center;flex-direction:column;
       font-size:11px;font-weight:800;color:\${color};box-shadow:\${shadow}">
       <span>\${icon}</span>
       <span style="font-size:7px;opacity:.85;margin-top:1px">\${d}.\${mo}</span>
-    </div>\`;
+    </div>`;
   }).join('');
 
   const warnBlock = status==='ending'
-    ? \`<div style="background:linear-gradient(135deg,#FFF9C4,#FFF176);color:#4E2A00;
+    ? `<div style="background:linear-gradient(135deg,#FFF9C4,#FFF176);color:#4E2A00;
         padding:12px 16px;border-radius:14px;font-size:13px;font-weight:700;
         text-align:center;margin-bottom:14px;box-shadow:0 2px 8px rgba(255,193,7,.3)">
         🦕 Залишилось лише \${remain} заняття — поновіть абонемент!
-      </div>\` : '';
+      </div>` : '';
 
   const photoBlock = photo
-    ? \`<div style="width:80px;height:80px;border-radius:50%;border:4px solid rgba(255,255,255,.9);
+    ? `<div style="width:80px;height:80px;border-radius:50%;border:4px solid rgba(255,255,255,.9);
         margin:0 auto 12px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.2)">
         <img src="\${photo}" style="width:100%;height:100%;object-fit:cover">
-      </div>\`
-    : \`<div style="width:72px;height:72px;border-radius:50%;border:3px solid rgba(255,255,255,.7);
+      </div>`
+    : `<div style="width:72px;height:72px;border-radius:50%;border:3px solid rgba(255,255,255,.7);
         margin:0 auto 12px;background:rgba(255,255,255,.2);
-        display:flex;align-items:center;justify-content:center;font-size:28px">🦕</div>\`;
+        display:flex;align-items:center;justify-content:center;font-size:28px">🦕</div>`;
 
   const updatedAt = new Date().toLocaleString('uk-UA');
 
-  return \`<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="uk">
 <head>
 <meta charset="UTF-8">
@@ -693,7 +693,7 @@ body{font-family:'Nunito',sans-serif;
   </div>
 </div>
 </body>
-</html>\`;
+</html>`;
 }
 
 function getCardDataUrl(c) {
