@@ -426,16 +426,30 @@ window.onload = async function() {
 // ═══════════════════════════════════════════════════════
 async function loadPublicCard(cardId) {
   try {
-    // Try cloud first
-    const binId = localStorage.getItem('hp_binId');
-    const apiKey = localStorage.getItem('hp_apiKey');
+    // The binId is encoded in the card URL itself after the | separator
+    // Format: cardKey = encodeId(clientId) + '|' + binId
+    // OR just cardKey = encodeId(clientId) and binId from URL param
+    
+    // Check if binId is passed as separate URL param
+    const params = new URLSearchParams(window.location.search);
+    const urlBinId = params.get('bin');
+    
+    // Try to get binId from URL first, then localStorage (for local preview)
+    const binId = urlBinId || localStorage.getItem('hp_binId');
+    const apiKey = localStorage.getItem('hp_apiKey') || '';
     
     let data = null;
 
     if (binId) {
-      // Try to load from JSONBin
-      const headers = { 'X-Master-Key': apiKey || '' };
-      const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, { headers });
+      // JSONBin public read — works WITHOUT master key if bin is public!
+      // Try without key first (public bin)
+      let res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`);
+      if (!res.ok && apiKey) {
+        // Try with key (private bin)
+        res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
+          headers: { 'X-Master-Key': apiKey }
+        });
+      }
       if (res.ok) {
         const json = await res.json();
         data = json.record;
@@ -443,7 +457,7 @@ async function loadPublicCard(cardId) {
     }
 
     if (!data) {
-      // Fallback to localStorage
+      // Fallback to localStorage (only works on same device)
       const c = localStorage.getItem('hp_clients');
       const a = localStorage.getItem('hp_attend');
       if (c) { data = { clients: JSON.parse(c), attend: JSON.parse(a||'{}') }; }
@@ -451,14 +465,14 @@ async function loadPublicCard(cardId) {
 
     if (!data || !data.clients) {
       document.getElementById('pubName').textContent = 'Картку не знайдено';
-      document.getElementById('pubDir').textContent = 'Зверніться до адміністратора';
+      document.getElementById('pubDir').textContent = 'Зверніться до адміністратора клубу';
       return;
     }
 
     const client = data.clients.find(c => encodeId(c.id) === cardId);
     if (!client) {
       document.getElementById('pubName').textContent = 'Картку не знайдено';
-      document.getElementById('pubDir').textContent = '';
+      document.getElementById('pubDir').textContent = 'Можливо посилання застаріло — попросіть нове';
       return;
     }
 
@@ -1160,22 +1174,23 @@ function renderCardLinks() {
     el.innerHTML='<p style="color:var(--text3);font-size:13px">Спочатку завантаж Excel</p>';
     return;
   }
+  const binId = cfg.binId || localStorage.getItem('hp_binId');
   el.innerHTML = clients.map(c=>{
     const rem = getRemain(c);
     const st  = getStatus(c);
     const em  = st==='active'?'🟢':st==='ending'?'🟡':'🔴';
+    const cardKey = encodeId(c.id);
+    const url = 'https://igorzagorij5-dot.github.io/hepizavr/?card=' + cardKey + (binId ? '&bin=' + binId : '');
     return `<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;
       background:var(--gray);border-radius:10px;margin-bottom:8px">
-      <div style="flex:1">
+      <div style="flex:1;min-width:0">
         <div style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:2px">${em} ${c.name}</div>
-        <div style="font-size:12px;color:var(--text2)">${c.direction} · залишок ${rem}/${c.totalLessons}${c.crossMonth?' ↗':''}</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:4px">
-          ✅ Відвідав: ${getPresent(c)} · ❌ Пропустив: ${Object.values(getAtt(c.id)).filter(v=>v==='absent').length}
-        </div>
+        <div style="font-size:12px;color:var(--text2)">${c.direction} · залишок ${rem}/${c.totalLessons}</div>
+        <div style="font-size:10px;color:#0088CC;margin-top:4px;word-break:break-all;max-width:500px">${url}</div>
       </div>
-      <div style="display:flex;flex-direction:column;gap:5px">
+      <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">
         <button class="btn btn-tg btn-xs" onclick="openCard('${esc(c.id)}')">👁 Відкрити</button>
-        <button class="btn btn-acc btn-xs" onclick="copyCardLink('${esc(c.id)}')">📋 Скопіювати</button>
+        <button class="btn btn-acc btn-xs" onclick="copyCardLink('${esc(c.id)}')">📋 Копіювати</button>
       </div>
     </div>`;
   }).join('');
@@ -1184,18 +1199,14 @@ function renderCardLinks() {
 function openCard(id) {
   const c = clients.find(x=>x.id===id);
   if (!c) return;
-  // Open self-contained card in new tab
-  const dataUrl = getCardDataUrl(c);
-  const win = window.open('', '_blank');
-  if (win) {
-    win.document.write(buildClientCardHTML(c));
-    win.document.close();
+  const binId = cfg.binId || localStorage.getItem('hp_binId');
+  if (binId) {
+    const cardKey = encodeId(c.id);
+    const url = 'https://igorzagorij5-dot.github.io/hepizavr/?card=' + cardKey + '&bin=' + binId;
+    window.open(url, '_blank');
   } else {
-    // Popup blocked — fallback to data: URL
-    const a = document.createElement('a');
-    a.href = dataUrl;
-    a.target = '_blank';
-    a.click();
+    const win = window.open('', '_blank');
+    if (win) { win.document.write(buildClientCardHTML(c)); win.document.close(); }
   }
 }
 
@@ -1214,12 +1225,17 @@ function openClientCard(id) {
 function copyCardLink(id) {
   const c = clients.find(x=>x.id===id);
   if (!c) return;
-  const html = buildClientCardHTML(c);
-  const dataUrl = 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
 
-  // Try to copy data: URL — works in most browsers
-  copyText(dataUrl);
-  toast('📋 Посилання скопійовано! Відправ батькам у Telegram.', 'success');
+  const binId = cfg.binId || localStorage.getItem('hp_binId');
+  if (binId) {
+    // Include bin ID in URL so parents can load data without API key!
+    const cardKey = encodeId(c.id);
+    const url = 'https://igorzagorij5-dot.github.io/hepizavr/?card=' + cardKey + '&bin=' + binId;
+    copyText(url);
+    toast('✅ Посилання скопійовано! Відправ батькам у Telegram.', 'success');
+  } else {
+    toast('⚠️ Налаштуй хмарне збереження у вкладці Налаштування!', 'warn');
+  }
 }
 
 // ═══════════════════════════════════════════════════════
