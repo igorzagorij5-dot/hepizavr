@@ -550,109 +550,150 @@ function buildClientCardHTML(c) {
   const total   = c.totalLessons;
   const pct     = Math.round(present / total * 100);
   const status  = getStatus(c);
+  const photo   = (attend[c.id] && attend[c.id]._photo) ? attend[c.id]._photo : '';
+  const cross   = c.crossMonth ? ' ↗' : '';
 
-  const stColor = status==='active' ? '#2E7D32' : status==='ending' ? '#E65100' : '#C62828';
-  const stBg    = status==='active' ? '#E8F5E9' : status==='ending' ? '#FFF8E1' : '#FFEBEE';
-  const stText  = status==='active' ? '🟢 Абонемент активний'
-                : status==='ending' ? '🟡 Скоро закінчується — час поновити!'
-                : '🔴 Абонемент вичерпано';
+  // HappyZavr color palette
+  const stText = status==='active'  ? '🟢 Абонемент активний'
+               : status==='ending'  ? '⚠️ Скоро закінчується!'
+               : '❌ Абонемент вичерпано';
+  const stBg   = status==='active'  ? 'linear-gradient(135deg,#a8edab,#5cb85c)'
+               : status==='ending'  ? 'linear-gradient(135deg,#FFE082,#FFA726)'
+               : 'linear-gradient(135deg,#ff9a9e,#e57373)';
+  const stColor= status==='active'  ? '#1B5E20'
+               : status==='ending'  ? '#4E2A00'
+               : '#7F0000';
+  const remColor= remain<=0 ? '#C62828' : remain<=2 ? '#E65100' : '#6A1B9A';
+  const barColor= remain<=0 ? '#e57373' : remain<=2 ? '#FFB74D' : '#CE93D8';
 
-  const barColor = remain<=0 ? '#C62828' : remain<=2 ? '#E65100' : '#2E7D32';
-  const remColor = remain<=0 ? '#C62828' : remain<=2 ? '#E65100' : '#2E7D32';
-
-  const cross = c.crossMonth ? ' ↗ між місяцями' : '';
-
-  const dots = c.lessonDates.map((iso, i) => {
+  // Dots with HappyZavr colors
+  const dots = c.lessonDates.map((iso,i) => {
     const s = att[i] || '';
     const [y,mo,d] = iso.split('-');
     const icon  = s==='present' ? '✓' : s==='absent' ? '✗' : String(i+1);
-    const bg    = s==='present' ? '#E8F5E9' : s==='absent' ? '#FFEBEE' : '#F5F5F5';
-    const brd   = s==='present' ? '#2E7D32' : s==='absent' ? '#C62828' : '#CFD8DC';
-    const color = s==='present' ? '#2E7D32' : s==='absent' ? '#C62828' : '#90A4AE';
-    return `<div style="width:36px;height:36px;border-radius:8px;border:2px solid ${brd};background:${bg};
+    const bg    = s==='present' ? 'linear-gradient(135deg,#a8edab,#4CAF50)'
+                : s==='absent'  ? 'linear-gradient(135deg,#ff9a9e,#e53935)'
+                : 'linear-gradient(135deg,#f3e5f5,#e1bee7)';
+    const color = s==='present' ? '#fff' : s==='absent' ? '#fff' : '#9C27B0';
+    const shadow= s==='present' ? '0 2px 8px rgba(76,175,80,.4)'
+                : s==='absent'  ? '0 2px 8px rgba(229,57,53,.4)'
+                : '0 2px 6px rgba(156,39,176,.15)';
+    return \`<div style="width:40px;height:40px;border-radius:12px;background:\${bg};
       display:flex;align-items:center;justify-content:center;flex-direction:column;
-      font-size:10px;font-weight:700;color:${color}">
-      <span>${icon}</span>
-      <span style="font-size:7px;opacity:.7">${d}.${mo}</span>
-    </div>`;
+      font-size:11px;font-weight:800;color:\${color};box-shadow:\${shadow}">
+      <span>\${icon}</span>
+      <span style="font-size:7px;opacity:.85;margin-top:1px">\${d}.\${mo}</span>
+    </div>\`;
   }).join('');
 
   const warnBlock = status==='ending'
-    ? `<div style="background:#FFF3CD;color:#856404;padding:10px 16px;border-radius:8px;
-        font-size:13px;font-weight:600;text-align:center;margin-bottom:14px;border:1px solid #FFEAA7">
-        ⚠️ Залишилось ${remain} занять — час поновити абонемент!
-      </div>` : '';
+    ? \`<div style="background:linear-gradient(135deg,#FFF9C4,#FFF176);color:#4E2A00;
+        padding:12px 16px;border-radius:14px;font-size:13px;font-weight:700;
+        text-align:center;margin-bottom:14px;box-shadow:0 2px 8px rgba(255,193,7,.3)">
+        🦕 Залишилось лише \${remain} заняття — поновіть абонемент!
+      </div>\` : '';
+
+  const photoBlock = photo
+    ? \`<div style="width:80px;height:80px;border-radius:50%;border:4px solid rgba(255,255,255,.9);
+        margin:0 auto 12px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.2)">
+        <img src="\${photo}" style="width:100%;height:100%;object-fit:cover">
+      </div>\`
+    : \`<div style="width:72px;height:72px;border-radius:50%;border:3px solid rgba(255,255,255,.7);
+        margin:0 auto 12px;background:rgba(255,255,255,.2);
+        display:flex;align-items:center;justify-content:center;font-size:28px">🦕</div>\`;
 
   const updatedAt = new Date().toLocaleString('uk-UA');
 
-  return `<!DOCTYPE html>
+  return \`<!DOCTYPE html>
 <html lang="uk">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>🦕 ${c.name} — Хепизавр</title>
+<title>HappyZavr — \${c.name}</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',Arial,sans-serif;background:linear-gradient(160deg,#0D1B3E,#1A3A6E);
+body{font-family:'Nunito',sans-serif;
+  background:linear-gradient(160deg,#FFDEE9 0%,#B5DBFF 50%,#e8d5f5 100%);
   min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
-.card{background:#fff;border-radius:22px;width:100%;max-width:400px;overflow:hidden;
-  box-shadow:0 24px 64px rgba(0,0,0,.45)}
-.hdr{background:linear-gradient(135deg,#1F3864,#1976D2);padding:24px 22px 22px;
-  color:#fff;text-align:center}
-.club{font-size:11px;opacity:.6;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px}
-.name{font-size:22px;font-weight:800;margin-bottom:4px}
-.dir{font-size:13px;opacity:.75;margin-bottom:14px}
-.dates{display:inline-block;font-size:12px;opacity:.8;background:rgba(255,255,255,.12);
-  border-radius:8px;padding:6px 12px}
-.body{padding:20px}
-.remain-block{text-align:center;margin-bottom:16px;padding:16px;background:#F4F6F8;border-radius:14px}
-.remain-big{font-size:52px;font-weight:900;line-height:1;color:${remColor}}
-.remain-lbl{font-size:13px;color:#546E7A;margin-top:3px}
-.prog-wrap{margin-bottom:14px}
-.prog-row{display:flex;justify-content:space-between;margin-bottom:6px}
-.prog-bg{height:10px;background:#ECEFF1;border-radius:5px;overflow:hidden}
-.prog-fill{height:100%;border-radius:5px;background:${barColor};width:${pct}%;transition:width .6s}
-.status{padding:9px;border-radius:10px;text-align:center;font-size:13px;font-weight:700;
-  margin-bottom:14px;background:${stBg};color:${stColor}}
-.lessons-hdr{font-size:11px;font-weight:700;color:#90A4AE;text-transform:uppercase;
-  letter-spacing:.6px;margin-bottom:8px}
-.dots{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:4px}
-.footer{background:#F4F6F8;padding:12px 20px;text-align:center;font-size:11px;color:#90A4AE;
-  border-top:1px solid #CFD8DC}
+.card{width:100%;max-width:390px;border-radius:28px;overflow:hidden;
+  box-shadow:0 20px 60px rgba(180,100,220,.25)}
+.hdr{background:linear-gradient(135deg,#f472b6 0%,#c084fc 50%,#818cf8 100%);
+  padding:28px 24px 24px;color:#fff;text-align:center;position:relative}
+.stars{position:absolute;top:0;left:0;right:0;bottom:0;overflow:hidden;pointer-events:none}
+.star{position:absolute;font-size:14px;opacity:.4;animation:twinkle 2s infinite}
+@keyframes twinkle{0%,100%{opacity:.2;transform:scale(1)}50%{opacity:.6;transform:scale(1.2)}}
+.club-logo{font-size:13px;font-weight:800;letter-spacing:2px;text-transform:uppercase;
+  opacity:.9;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:6px}
+.name{font-size:24px;font-weight:900;margin-bottom:4px;text-shadow:0 2px 8px rgba(0,0,0,.15)}
+.dir-badge{display:inline-block;background:rgba(255,255,255,.25);backdrop-filter:blur(4px);
+  border-radius:20px;padding:4px 14px;font-size:13px;font-weight:700;margin-bottom:14px}
+.dates-badge{display:inline-block;background:rgba(255,255,255,.2);
+  border-radius:12px;padding:6px 14px;font-size:12px;font-weight:700;opacity:.9}
+.body{background:#fff;padding:22px 20px}
+.remain-block{text-align:center;margin-bottom:18px;padding:20px 16px;
+  background:linear-gradient(135deg,#fdf4ff,#f5f3ff);
+  border-radius:20px;border:2px solid #e9d5ff}
+.remain-big{font-size:64px;font-weight:900;line-height:1;color:\${remColor};
+  text-shadow:0 2px 12px rgba(107,33,168,.2)}
+.remain-lbl{font-size:14px;color:#7C3AED;font-weight:700;margin-top:4px}
+.prog-wrap{margin-bottom:16px}
+.prog-row{display:flex;justify-content:space-between;margin-bottom:8px;align-items:center}
+.prog-lbl{font-size:13px;color:#6B7280;font-weight:600}
+.prog-num{font-size:14px;font-weight:800;color:#4C1D95}
+.prog-bg{height:12px;background:#F3E8FF;border-radius:6px;overflow:hidden}
+.prog-fill{height:100%;border-radius:6px;background:\${barColor};width:\${pct}%}
+.status{padding:12px;border-radius:16px;text-align:center;font-size:14px;font-weight:800;
+  margin-bottom:16px;background:\${stBg};color:\${stColor};
+  box-shadow:0 4px 12px rgba(0,0,0,.1)}
+.lessons-hdr{font-size:12px;font-weight:800;color:#9333EA;text-transform:uppercase;
+  letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.dots{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:4px}
+.footer{background:linear-gradient(135deg,#fdf4ff,#ede9fe);
+  padding:14px 20px;text-align:center;font-size:11px;color:#9333EA;font-weight:600;
+  border-top:2px solid #e9d5ff}
 </style>
 </head>
 <body>
 <div class="card">
   <div class="hdr">
-    <div class="club">🦕 Хепизавр</div>
-    <div class="name">${c.name}</div>
-    <div class="dir">${c.direction}</div>
-    <div class="dates">📅 ${c.startDate} → ${c.endDate}${cross}</div>
+    <div class="stars">
+      <span class="star" style="left:10%;top:20%;animation-delay:.2s">⭐</span>
+      <span class="star" style="left:80%;top:15%;animation-delay:.5s">✨</span>
+      <span class="star" style="left:20%;top:70%;animation-delay:.8s">⭐</span>
+      <span class="star" style="left:70%;top:65%;animation-delay:.3s">✨</span>
+      <span class="star" style="left:50%;top:10%;animation-delay:1s">⭐</span>
+    </div>
+    \${photoBlock}
+    <div class="club-logo">🦕 HappyZavr</div>
+    <div class="name">\${c.name}</div>
+    <div class="dir-badge">🎯 \${c.direction}</div><br>
+    <div class="dates-badge">📅 \${c.startDate} → \${c.endDate}\${cross}</div>
   </div>
   <div class="body">
     <div class="remain-block">
-      <div class="remain-big">${remain}</div>
-      <div class="remain-lbl">занять залишилось</div>
+      <div class="remain-big">\${remain}</div>
+      <div class="remain-lbl">🎓 занять залишилось</div>
     </div>
     <div class="prog-wrap">
       <div class="prog-row">
-        <span style="font-size:12px;color:#546E7A">Відвідано занять</span>
-        <span style="font-size:13px;font-weight:700;color:#1F3864">${present} з ${total}</span>
+        <span class="prog-lbl">✅ Відвідано занять</span>
+        <span class="prog-num">\${present} з \${total}</span>
       </div>
       <div class="prog-bg"><div class="prog-fill"></div></div>
     </div>
-    <div class="status">${stText}</div>
-    ${warnBlock}
-    <div class="lessons-hdr">Відвідуваність занять</div>
-    <div class="dots">${dots}</div>
+    <div class="status">\${stText}</div>
+    \${warnBlock}
+    <div class="lessons-hdr">🗓️ Відвідуваність</div>
+    <div class="dots">\${dots}</div>
   </div>
   <div class="footer">
-    Картка дитячого клубу Хепизавр · Тільки перегляд<br>
-    <span style="font-size:10px">Оновлено: ${updatedAt}</span>
+    🦕 HappyZavr · Картка оновлюється автоматично<br>
+    <span style="font-size:10px;opacity:.7">Оновлено: \${updatedAt}</span>
   </div>
 </div>
 </body>
-</html>`;
+</html>\`;
 }
 
 function getCardDataUrl(c) {
@@ -780,6 +821,19 @@ function loadLocal() {
              setSyncStatus('ok','Хмара активна'); }
     if (clients.length) showMain();
   } catch(e){}
+}
+
+function uploadPhoto(clientId, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    if (!attend[clientId]) attend[clientId] = {};
+    attend[clientId]._photo = e.target.result;
+    saveAll();
+    toast('📷 Фото додано!', 'success');
+  };
+  reader.readAsDataURL(file);
 }
 
 function saveAll() {
@@ -1195,8 +1249,12 @@ function buildCard(c) {
   </div>
   <div class="card-foot">
     <button class="btn btn-tg btn-sm share-btn" onclick="openClientCard('${esc(c.id)}')">
-      👁 Відкрити картку для батьків
+      👁 Картка для батьків
     </button>
+    <label class="btn btn-out btn-xs" style="cursor:pointer" title="Додати фото дитини">
+      📷
+      <input type="file" accept="image/*" style="display:none" onchange="uploadPhoto('${esc(c.id)}',this)">
+    </label>
     <button class="btn btn-acc btn-xs" onclick="markAll('${esc(c.id)}','present')">✓ Всі</button>
   </div>
 </div>`;
