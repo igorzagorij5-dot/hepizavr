@@ -399,7 +399,7 @@ let clients  = [];
 let attend   = {};
 let cfg      = { apiKey:'', binId:'' };
 let syncing  = false;
-let BASE_URL = window.location.origin + window.location.pathname;
+// Card sharing uses self-contained HTML via data: URL (works locally + online)
 
 // ═══════════════════════════════════════════════════════
 // INIT — check if public card view
@@ -522,8 +522,127 @@ function getStatus2(c, att) {
 }
 
 function encodeId(id) {
-  // Simple URL-safe encoding
   return btoa(unescape(encodeURIComponent(id))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+}
+
+// ─── CARD HTML GENERATOR ────────────────────────────────────────────────────
+// Generates a self-contained HTML page for the client card.
+// Sent as a data: URL — works without any server!
+function buildClientCardHTML(c) {
+  const att     = getAtt(c.id);
+  const present = getPresent(c);
+  const remain  = getRemain(c);
+  const total   = c.totalLessons;
+  const pct     = Math.round(present / total * 100);
+  const status  = getStatus(c);
+
+  const stColor = status==='active' ? '#2E7D32' : status==='ending' ? '#E65100' : '#C62828';
+  const stBg    = status==='active' ? '#E8F5E9' : status==='ending' ? '#FFF8E1' : '#FFEBEE';
+  const stText  = status==='active' ? '🟢 Абонемент активний'
+                : status==='ending' ? '🟡 Скоро закінчується — час поновити!'
+                : '🔴 Абонемент вичерпано';
+
+  const barColor = remain<=0 ? '#C62828' : remain<=2 ? '#E65100' : '#2E7D32';
+  const remColor = remain<=0 ? '#C62828' : remain<=2 ? '#E65100' : '#2E7D32';
+
+  const cross = c.crossMonth ? ' ↗ між місяцями' : '';
+
+  const dots = c.lessonDates.map((iso, i) => {
+    const s = att[i] || '';
+    const [y,mo,d] = iso.split('-');
+    const icon  = s==='present' ? '✓' : s==='absent' ? '✗' : String(i+1);
+    const bg    = s==='present' ? '#E8F5E9' : s==='absent' ? '#FFEBEE' : '#F5F5F5';
+    const brd   = s==='present' ? '#2E7D32' : s==='absent' ? '#C62828' : '#CFD8DC';
+    const color = s==='present' ? '#2E7D32' : s==='absent' ? '#C62828' : '#90A4AE';
+    return `<div style="width:36px;height:36px;border-radius:8px;border:2px solid ${brd};background:${bg};
+      display:flex;align-items:center;justify-content:center;flex-direction:column;
+      font-size:10px;font-weight:700;color:${color}">
+      <span>${icon}</span>
+      <span style="font-size:7px;opacity:.7">${d}.${mo}</span>
+    </div>`;
+  }).join('');
+
+  const warnBlock = status==='ending'
+    ? `<div style="background:#FFF3CD;color:#856404;padding:10px 16px;border-radius:8px;
+        font-size:13px;font-weight:600;text-align:center;margin-bottom:14px;border:1px solid #FFEAA7">
+        ⚠️ Залишилось ${remain} занять — час поновити абонемент!
+      </div>` : '';
+
+  const updatedAt = new Date().toLocaleString('uk-UA');
+
+  return `<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🦕 ${c.name} — Хепизавр</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:linear-gradient(160deg,#0D1B3E,#1A3A6E);
+  min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+.card{background:#fff;border-radius:22px;width:100%;max-width:400px;overflow:hidden;
+  box-shadow:0 24px 64px rgba(0,0,0,.45)}
+.hdr{background:linear-gradient(135deg,#1F3864,#1976D2);padding:24px 22px 22px;
+  color:#fff;text-align:center}
+.club{font-size:11px;opacity:.6;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px}
+.name{font-size:22px;font-weight:800;margin-bottom:4px}
+.dir{font-size:13px;opacity:.75;margin-bottom:14px}
+.dates{display:inline-block;font-size:12px;opacity:.8;background:rgba(255,255,255,.12);
+  border-radius:8px;padding:6px 12px}
+.body{padding:20px}
+.remain-block{text-align:center;margin-bottom:16px;padding:16px;background:#F4F6F8;border-radius:14px}
+.remain-big{font-size:52px;font-weight:900;line-height:1;color:${remColor}}
+.remain-lbl{font-size:13px;color:#546E7A;margin-top:3px}
+.prog-wrap{margin-bottom:14px}
+.prog-row{display:flex;justify-content:space-between;margin-bottom:6px}
+.prog-bg{height:10px;background:#ECEFF1;border-radius:5px;overflow:hidden}
+.prog-fill{height:100%;border-radius:5px;background:${barColor};width:${pct}%;transition:width .6s}
+.status{padding:9px;border-radius:10px;text-align:center;font-size:13px;font-weight:700;
+  margin-bottom:14px;background:${stBg};color:${stColor}}
+.lessons-hdr{font-size:11px;font-weight:700;color:#90A4AE;text-transform:uppercase;
+  letter-spacing:.6px;margin-bottom:8px}
+.dots{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:4px}
+.footer{background:#F4F6F8;padding:12px 20px;text-align:center;font-size:11px;color:#90A4AE;
+  border-top:1px solid #CFD8DC}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="hdr">
+    <div class="club">🦕 Хепизавр</div>
+    <div class="name">${c.name}</div>
+    <div class="dir">${c.direction}</div>
+    <div class="dates">📅 ${c.startDate} → ${c.endDate}${cross}</div>
+  </div>
+  <div class="body">
+    <div class="remain-block">
+      <div class="remain-big">${remain}</div>
+      <div class="remain-lbl">занять залишилось</div>
+    </div>
+    <div class="prog-wrap">
+      <div class="prog-row">
+        <span style="font-size:12px;color:#546E7A">Відвідано занять</span>
+        <span style="font-size:13px;font-weight:700;color:#1F3864">${present} з ${total}</span>
+      </div>
+      <div class="prog-bg"><div class="prog-fill"></div></div>
+    </div>
+    <div class="status">${stText}</div>
+    ${warnBlock}
+    <div class="lessons-hdr">Відвідуваність занять</div>
+    <div class="dots">${dots}</div>
+  </div>
+  <div class="footer">
+    Картка дитячого клубу Хепизавр · Тільки перегляд<br>
+    <span style="font-size:10px">Оновлено: ${updatedAt}</span>
+  </div>
+</div>
+</body>
+</html>`;
+}
+
+function getCardDataUrl(c) {
+  const html = buildClientCardHTML(c);
+  return 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -692,7 +811,16 @@ function loadFile(e) {
         newClients = parseCSV(ev.target.result);
       } else {
         const wb   = XLSX.read(ev.target.result, {type:'array', cellDates:true});
-        const ws   = wb.Sheets[wb.SheetNames[0]];
+        // Find sheet with data
+        let ws = wb.Sheets[wb.SheetNames[0]];
+        for (const sn of wb.SheetNames) {
+          const s = wb.Sheets[sn];
+          const tmp = XLSX.utils.sheet_to_json(s, {raw:false, defval:''});
+          if (tmp.length > 1) { ws = s; break; }
+        }
+        // Our Excel: row1=title, row2=hint, row3=headers, row4+=data
+        // range:2 means start from 0-indexed row 2 (= Excel row 3) as header
+        // Clean Excel: headers on row 1, data from row 2
         const rows = XLSX.utils.sheet_to_json(ws, {raw:false, defval:''});
         newClients = parseRows(rows);
       }
@@ -725,42 +853,69 @@ function parseRows(rows) {
   if (!rows.length) return [];
   const res = [];
   const keys = Object.keys(rows[0]);
-  const find = (...kws) => keys.find(k => kws.some(w=>k.toLowerCase().includes(w))) || '';
-  const cName  = find('фіо','имя','ребён','клієнт','name','дитин');
-  const cDir   = find('напрям','направ','direction','group','тип');
-  const cStart = find('початк','начал','start','від');
-  const cEnd   = find('кінц','конц','end');
+
+  // Find column by keyword — keys may contain \n linebreaks from Excel merged headers
+  // Find column by keyword (handles both clean and old Excel formats)
+  const find = (...kws) => keys.find(k => {
+    const kl = k.toLowerCase().replace(/\n/g,' ').replace(/\r/g,'');
+    return kws.some(w => kl.includes(w));
+  }) || '';
+
+  const cName  = find('фіо','клієнт','дитин','ребён','name');
+  const cDir   = find('напрям','направ','direction','тип','group');
+  const cStart = find('початк','начал','start','дата п');
+  const cEnd   = find('кінц','конц','end','дата к');
   const cTotal = find('к-сть','кількіс','занят','кол','count','total','lesson');
 
+  // Fallback: use column by index if keyword search fails
+  // Clean Excel: №=0 ФІО=1 Напрямок=2 ДатаПоч=3 КстьЗан=4 ДатаКін=5 Ціна=6
+  const byIdx = (i) => keys[i] || '';
+
   rows.forEach(row => {
-    const name = (row[cName]||row[keys[0]]||'').toString().trim();
-    if (!name||name.length<2) return;
-    if (/^(№|#|фіо|имя|name)/i.test(name)) return;
+    // Get name — try detected column, then index 1 (ФІО column)
+    const rawName = row[cName] || row[byIdx(1)] || row[byIdx(0)] || '';
+    const name = rawName.toString().trim();
 
-    const dir      = (row[cDir]  ||row[keys[1]]||'Загальне').toString().trim();
-    const startRaw = row[cStart] ||row[keys[2]]||'';
-    const endRaw   = row[cEnd]   ||'';
-    const totalRaw = row[cTotal] ||row[keys[3]]||'8';
+    // Skip empty, too short, header-looking, or emoji-only rows
+    if (!name || name.length < 2) return;
+    if (/^(№|#|фіо|імя|имя|name|\d+$)/i.test(name)) return;
+    if (/^[🦕💡📖✅]/.test(name)) return; // skip emoji header rows
 
-    const startDate = parseDate(startRaw) || new Date();
-    const total     = Math.max(1, parseInt(totalRaw)||8);
-    let   endDate   = endRaw ? parseDate(endRaw) : null;
+    // Direction
+    const dir = (row[cDir] || row[byIdx(2)] || 'Загальне').toString().trim();
+
+    // Dates — XLSX with cellDates:true returns JS Date objects, raw:false returns strings
+    const startRaw = row[cStart] || row[byIdx(3)] || '';
+    const endRaw   = row[cEnd]   || row[byIdx(5)] || '';
+
+    // Total lessons
+    const totalRaw = row[cTotal] || row[byIdx(4)] || '8';
+    const totalNum = parseInt(String(totalRaw).replace(/[^\d]/g,'')) || 8;
+    const total    = Math.max(1, totalNum);
+
+    // Parse dates
+    const startDate = parseDate(startRaw);
+    if (!startDate) { console.warn('Skip (no start date):', name, startRaw); return; }
+
+    let endDate = endRaw ? parseDate(endRaw) : null;
     if (!endDate) endDate = new Date(startDate.getTime() + 35*86400000);
 
-    const crossMonth = startDate.getMonth()!==endDate.getMonth() ||
-                       startDate.getFullYear()!==endDate.getFullYear();
+    const crossMonth = startDate.getMonth()  !== endDate.getMonth() ||
+                       startDate.getFullYear()!== endDate.getFullYear();
 
     res.push({
-      id:          name+'§'+dir,
+      id:           name + '§' + dir,
       name,
-      direction:   dir,
-      startDate:   fmtDate(startDate),
-      endDate:     fmtDate(endDate),
-      totalLessons:total,
-      lessonDates: genLessonDates(startDate, total, dir),
+      direction:    dir,
+      startDate:    fmtDate(startDate),
+      endDate:      fmtDate(endDate),
+      totalLessons: total,
+      lessonDates:  genLessonDates(startDate, total, dir),
       crossMonth
     });
   });
+
+  console.log('Parsed clients:', res.length, res.map(c=>c.name));
   return res;
 }
 
@@ -778,16 +933,36 @@ function parseCSV(text) {
 }
 
 function parseDate(v) {
-  if (!v) return null;
-  if (v instanceof Date) return isNaN(v)?null:v;
+  if (!v && v !== 0) return null;
+  // JS Date object (from XLSX cellDates:true)
+  if (v instanceof Date) {
+    if (isNaN(v.getTime())) return null;
+    // XLSX dates are UTC midnight — convert to local
+    return new Date(v.getFullYear(), v.getMonth(), v.getDate());
+  }
   const s = String(v).trim();
+  if (!s) return null;
+  // DD.MM.YYYY
   let m = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
-  if (m) return new Date(+m[3],+m[2]-1,+m[1]);
+  if (m) return new Date(+m[3], +m[2]-1, +m[1]);
+  // DD/MM/YYYY
   m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (m) return new Date(+m[3],+m[2]-1,+m[1]);
+  if (m) return new Date(+m[3], +m[2]-1, +m[1]);
+  // YYYY-MM-DD (ISO)
   m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (m) return new Date(+m[1],+m[2]-1,+m[3]);
-  const d=new Date(s); return isNaN(d)?null:d;
+  if (m) return new Date(+m[1], +m[2]-1, +m[3]);
+  // Excel serial number (raw:false still sometimes returns these)
+  if (/^\d+(\.\d+)?$/.test(s)) {
+    const serial = parseFloat(s);
+    if (serial > 40000 && serial < 60000) { // reasonable date range
+      const d = new Date((serial - 25569) * 86400000);
+      return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    }
+  }
+  // Fallback — try native parse
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  return null;
 }
 
 function fmtDate(d) {
@@ -933,8 +1108,6 @@ function buildCard(c) {
 
   const cross=c.crossMonth?`<span class="cross-m" title="Переходить у наступний місяць">↗ між місяцями</span>`:'';
 
-  const shareUrl = BASE_URL+'?card='+encodeId(c.id);
-
   const dots=c.lessonDates.map((iso,i)=>{
     const s=att[i]||'';
     const [y,mo,d]=iso.split('-');
@@ -969,11 +1142,9 @@ function buildCard(c) {
     <div class="dots">${dots}</div>
   </div>
   <div class="card-foot">
-    <div class="share-link-wrap" title="${shareUrl}">
-      <span style="font-size:11px">🔗</span>
-      <span class="share-link-url">${shareUrl.replace(window.location.origin,'')}</span>
-    </div>
-    <button class="btn btn-tg btn-xs" onclick="copyLink('${esc(c.id)}')">📤 Копіювати</button>
+    <button class="btn btn-tg btn-sm share-btn" onclick="openClientCard('${esc(c.id)}')">
+      👁 Відкрити картку для батьків
+    </button>
     <button class="btn btn-acc btn-xs" onclick="markAll('${esc(c.id)}','present')">✓ Всі</button>
   </div>
 </div>`;
@@ -990,32 +1161,65 @@ function renderCardLinks() {
     return;
   }
   el.innerHTML = clients.map(c=>{
-    const url = BASE_URL+'?card='+encodeId(c.id);
     const rem = getRemain(c);
     const st  = getStatus(c);
     const em  = st==='active'?'🟢':st==='ending'?'🟡':'🔴';
-    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;
-      background:var(--gray);border-radius:9px;margin-bottom:7px">
+    return `<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;
+      background:var(--gray);border-radius:10px;margin-bottom:8px">
       <div style="flex:1">
-        <div style="font-size:13px;font-weight:600;color:var(--navy)">${em} ${c.name}</div>
-        <div style="font-size:11px;color:var(--text2)">${c.direction} · залишок ${rem}/${c.totalLessons}${c.crossMonth?' ↗':''}</div>
-        <div style="font-size:10px;color:var(--text3);word-break:break-all;margin-top:2px">${url}</div>
+        <div style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:2px">${em} ${c.name}</div>
+        <div style="font-size:12px;color:var(--text2)">${c.direction} · залишок ${rem}/${c.totalLessons}${c.crossMonth?' ↗':''}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">
+          ✅ Відвідав: ${getPresent(c)} · ❌ Пропустив: ${Object.values(getAtt(c.id)).filter(v=>v==='absent').length}
+        </div>
       </div>
-      <button class="btn btn-tg btn-xs" onclick="copyLink('${esc(c.id)}')">📋 Копіювати</button>
-      <button class="btn btn-acc btn-xs" onclick="openCard('${esc(c.id)}')">👁 Відкрити</button>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <button class="btn btn-tg btn-xs" onclick="openCard('${esc(c.id)}')">👁 Відкрити</button>
+        <button class="btn btn-acc btn-xs" onclick="copyCardLink('${esc(c.id)}')">📋 Скопіювати</button>
+      </div>
     </div>`;
   }).join('');
 }
 
-function copyLink(id) {
-  const url = BASE_URL+'?card='+encodeId(id);
-  copyText(url);
-  toast('🔗 Посилання скопійовано!', 'success');
+function openCard(id) {
+  const c = clients.find(x=>x.id===id);
+  if (!c) return;
+  // Open self-contained card in new tab
+  const dataUrl = getCardDataUrl(c);
+  const win = window.open('', '_blank');
+  if (win) {
+    win.document.write(buildClientCardHTML(c));
+    win.document.close();
+  } else {
+    // Popup blocked — fallback to data: URL
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.target = '_blank';
+    a.click();
+  }
 }
 
-function openCard(id) {
-  const url = BASE_URL+'?card='+encodeId(id);
-  window.open(url, '_blank');
+function openClientCard(id) {
+  const c = clients.find(x=>x.id===id);
+  if (!c) return;
+  const win = window.open('', '_blank');
+  if (win) {
+    win.document.write(buildClientCardHTML(c));
+    win.document.close();
+  } else {
+    toast('⚠️ Дозволь спливаючі вікна в браузері або використай вкладку Посилання', 'warn');
+  }
+}
+
+function copyCardLink(id) {
+  const c = clients.find(x=>x.id===id);
+  if (!c) return;
+  const html = buildClientCardHTML(c);
+  const dataUrl = 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
+
+  // Try to copy data: URL — works in most browsers
+  copyText(dataUrl);
+  toast('📋 Посилання скопійовано! Відправ батькам у Telegram.', 'success');
 }
 
 // ═══════════════════════════════════════════════════════
