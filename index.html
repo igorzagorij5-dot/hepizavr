@@ -223,6 +223,53 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray);color:var(--
   .grid{grid-template-columns:1fr}
   .hdr{padding:0 12px}
 }
+
+/* ── SIDEBAR ── */
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;backdrop-filter:blur(2px)}
+.sidebar-overlay.open{display:block}
+.sidebar{position:fixed;left:-290px;top:0;bottom:0;width:280px;
+  background:linear-gradient(180deg,#3b0764 0%,#6b21a8 50%,#9333ea 100%);
+  z-index:301;transition:left .3s cubic-bezier(.4,0,.2,1);
+  display:flex;flex-direction:column;box-shadow:6px 0 30px rgba(0,0,0,.35)}
+.sidebar.open{left:0}
+.sb-header{padding:24px 20px 16px;border-bottom:1px solid rgba(255,255,255,.15);position:relative}
+.sb-logo{display:flex;align-items:center;gap:10px;color:#fff}
+.sb-logo-emoji{font-size:28px}
+.sb-logo h2{font-size:18px;font-weight:900}
+.sb-logo small{font-size:10px;opacity:.65;letter-spacing:1px;text-transform:uppercase;display:block}
+.sb-close{position:absolute;top:16px;right:16px;background:rgba(255,255,255,.15);
+  border:none;color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;
+  font-size:16px;display:flex;align-items:center;justify-content:center}
+.sb-close:hover{background:rgba(255,255,255,.28)}
+.sb-nav{flex:1;overflow-y:auto;padding:8px 0}
+.sb-section{padding:10px 20px 4px;font-size:10px;font-weight:800;
+  color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:1.5px}
+.sb-item{display:flex;align-items:center;gap:12px;padding:11px 20px;cursor:pointer;
+  color:rgba(255,255,255,.82);font-size:14px;font-weight:600;transition:all .15s;
+  border-left:3px solid transparent}
+.sb-item:hover{background:rgba(255,255,255,.12);color:#fff}
+.sb-item.active{background:rgba(255,255,255,.18);color:#fff;border-left-color:#f9a8d4;font-weight:800}
+.sb-item-icon{font-size:19px;width:26px;text-align:center;flex-shrink:0}
+.sb-footer{padding:14px 20px;border-top:1px solid rgba(255,255,255,.15)}
+.sb-sync{display:flex;align-items:center;gap:8px;font-size:12px;color:rgba(255,255,255,.7)}
+.sb-menu-btn{background:rgba(255,255,255,.15);border:none;color:#fff;
+  width:36px;height:36px;border-radius:10px;cursor:pointer;font-size:20px;
+  display:flex;align-items:center;justify-content:center;transition:background .2s;flex-shrink:0}
+.sb-menu-btn:hover{background:rgba(255,255,255,.28)}
+.coming-soon{text-align:center;padding:80px 20px}
+.coming-soon .cs-icon{font-size:60px;margin-bottom:14px}
+.coming-soon h2{font-size:20px;font-weight:800;color:var(--navy);margin-bottom:8px}
+.coming-soon p{font-size:14px;color:var(--text2);line-height:1.6}
+.coming-soon .cs-badge{display:inline-block;background:linear-gradient(135deg,#f472b6,#c084fc);
+  color:#fff;padding:6px 16px;border-radius:20px;font-size:12px;font-weight:700;margin-top:12px}
+
+/* ── DIRECTION TABS ── */
+.dir-tab{padding:8px 16px;border:1.5px solid var(--border);border-radius:20px;
+  background:#fff;font-size:13px;font-weight:600;cursor:pointer;color:var(--text2);
+  transition:all .15s;white-space:nowrap}
+.dir-tab:hover{border-color:#c084fc;color:#6b21a8}
+.dir-tab.active{background:linear-gradient(135deg,#f472b6,#c084fc);
+  color:#fff;border-color:transparent;box-shadow:0 3px 10px rgba(192,132,252,.4)}
 </style>
 </head>
 <body>
@@ -269,36 +316,89 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray);color:var(--
      ADMIN VIEW
 ═══════════════════════════════════════════════════════ -->
 <div id="adminView">
-  <div class="hdr">
-    <div class="logo">
-      <span class="logo-emoji">🦕</span>
-      <div>
-        <h1>Хепизавр</h1>
-        <small>Облік відвідувань</small>
+    <!-- SIDEBAR OVERLAY -->
+  <div class="sidebar-overlay" id="sbOverlay" onclick="closeSidebar()"></div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar" id="sidebar">
+    <div class="sb-header">
+      <div class="sb-logo">
+        <span class="sb-logo-emoji">🦕</span>
+        <div><h2>HappyZavr</h2><small>Адмін панель</small></div>
       </div>
+      <button class="sb-close" onclick="closeSidebar()">✕</button>
     </div>
-    <div class="hdr-btns">
-      <span id="syncStatus" style="font-size:11px;color:rgba(255,255,255,.7);display:flex;align-items:center">
-        <span class="sync-dot ok" id="syncDot"></span><span id="syncTxt">Локально</span>
-      </span>
-      <button class="btn btn-out btn-sm" onclick="document.getElementById('fileInp').click()">📂 Excel</button>
-      <button class="btn btn-grn btn-sm" onclick="saveAll()">💾 Зберегти</button>
+    <nav class="sb-nav">
+      <div class="sb-section">Основне</div>
+      <div class="sb-item active" data-page="attend" onclick="navTo(this)">
+        <span class="sb-item-icon">✅</span><span>Відвідування</span>
+      </div>
+      <div class="sb-item" data-page="cards" onclick="navTo(this)">
+        <span class="sb-item-icon">🔗</span><span>Картки для батьків</span>
+      </div>
+      <div class="sb-section">Управління</div>
+      <div class="sb-item" data-page="salary" onclick="navTo(this)">
+        <span class="sb-item-icon">💰</span><span>Зарплата викладачів</span>
+      </div>
+      <div class="sb-item" data-page="booking" onclick="navTo(this)">
+        <span class="sb-item-icon">🎉</span><span>Бронювання замовлень</span>
+      </div>
+      <div class="sb-item" data-page="finance" onclick="navTo(this)">
+        <span class="sb-item-icon">📊</span><span>Фінансовий звіт</span>
+      </div>
+      <div class="sb-section">Інше</div>
+      <div class="sb-item" data-page="price" onclick="navTo(this)">
+        <span class="sb-item-icon">🏷️</span><span>Прайс</span>
+      </div>
+      <div class="sb-item" data-page="contacts" onclick="navTo(this)">
+        <span class="sb-item-icon">📋</span><span>Контакти співпраці</span>
+      </div>
+      <div class="sb-item" data-page="setup" onclick="navTo(this)">
+        <span class="sb-item-icon">⚙️</span><span>Налаштування</span>
+      </div>
+    </nav>
+    <div class="sb-footer">
+      <div class="sb-sync">
+        <span class="sync-dot ok" id="syncDot"></span>
+        <span id="syncTxt">Локально</span>
+      </div>
     </div>
   </div>
 
-  <div class="tabs">
-    <div class="tab active" data-tab="attend" onclick="switchTab(this)">✅ Відвідування</div>
-    <div class="tab" data-tab="cards" onclick="switchTab(this)">🔗 Картки</div>
-    <div class="tab" data-tab="setup" onclick="switchTab(this)">⚙️ Налаштування</div>
+  <!-- TOP HEADER -->
+  <div class="hdr">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="sb-menu-btn" onclick="openSidebar()">☰</button>
+      <div class="logo">
+        <span class="logo-emoji">🦕</span>
+        <div><h1>HappyZavr</h1><small id="pageTitle">Відвідування</small></div>
+      </div>
+    </div>
+    <div class="hdr-btns">
+      <button class="btn btn-out btn-sm" onclick="document.getElementById('fileInp').click()">📂 Excel</button>
+      <button class="btn btn-grn btn-sm" onclick="saveAll()">💾 Зберегти</button>
+    </div>
   </div>
 
   <input type="file" id="fileInp" accept=".xlsx,.xls,.csv" onchange="loadFile(event)">
 
   <!-- ATTENDANCE PAGE -->
   <div class="page active" id="pg-attend">
+
+    <!-- DIRECTION TABS -->
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+      <button class="dir-tab active" data-dir="all" onclick="setDirTab(this)">🗂 Всі</button>
+      <button class="dir-tab" data-dir="dance1" onclick="setDirTab(this)">💃 Танці Гр.1</button>
+      <button class="dir-tab" data-dir="dance2" onclick="setDirTab(this)">💃 Танці Гр.2</button>
+      <button class="dir-tab" data-dir="school1" onclick="setDirTab(this)">📚 Підгот. Молодша</button>
+      <button class="dir-tab" data-dir="school2" onclick="setDirTab(this)">📚 Підгот. Старша</button>
+      <button class="dir-tab" data-dir="logo" onclick="setDirTab(this)">🗣 Логопед</button>
+      <button class="btn btn-acc btn-sm" style="margin-left:auto" onclick="openAddModal()">+ Додати</button>
+    </div>
+
     <div id="upZone" class="upload-zone"
       onclick="document.getElementById('fileInp').click()"
-      ondragover="ev.preventDefault();this.classList.add('drag')"
+      ondragover="event.preventDefault();this.classList.add('drag')"
       ondragleave="this.classList.remove('drag')"
       ondrop="doDrop(event)">
       <div class="ico">📊</div>
@@ -310,8 +410,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray);color:var(--
     <div id="mainContent" style="display:none">
       <div class="stats" id="statsRow"></div>
       <div class="fbar">
-        <select id="fDir" onchange="renderCards()"><option value="">Всі напрямки</option></select>
-        <input id="fSearch" type="text" placeholder="🔍 Пошук за ФІО..." oninput="renderCards()" style="min-width:170px">
+        <input id="fSearch" type="text" placeholder="🔍 Пошук за ФІО..." oninput="renderCards()" style="min-width:200px">
         <select id="fStatus" onchange="renderCards()">
           <option value="">Всі статуси</option>
           <option value="active">Активні</option>
@@ -321,6 +420,52 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray);color:var(--
         <span class="cnt-badge" id="cntBadge">0</span>
       </div>
       <div class="grid" id="cardsGrid"></div>
+    </div>
+  </div>
+
+  <!-- ADD CLIENT MODAL -->
+  <div id="addModal" style="display:none;position:fixed;inset:0;z-index:500;
+    background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;padding:16px">
+    <div style="background:#fff;border-radius:20px;width:100%;max-width:480px;
+      box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden">
+      <div style="background:linear-gradient(135deg,#f472b6,#c084fc);padding:20px 24px;color:#fff;
+        display:flex;align-items:center;justify-content:space-between">
+        <h3 style="font-size:16px;font-weight:800">➕ Новий абонемент</h3>
+        <button onclick="closeAddModal()" style="background:rgba(255,255,255,.2);border:none;color:#fff;
+          width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:16px">✕</button>
+      </div>
+      <div style="padding:20px;display:flex;flex-direction:column;gap:14px">
+        <div>
+          <label style="font-size:12px;font-weight:700;color:#6B7280;display:block;margin-bottom:4px">ФІО ДИТИНИ</label>
+          <input id="mName" type="text" placeholder="Іванова Маша"
+            style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:14px;outline:none">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:700;color:#6B7280;display:block;margin-bottom:4px">НАПРЯМОК</label>
+          <select id="mDir" onchange="updateModalFields()"
+            style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:14px;outline:none;background:#fff">
+            <option value="dance1">💃 Танці — Група 1</option>
+            <option value="dance2">💃 Танці — Група 2</option>
+            <option value="school1">📚 Підготовка до школи — Молодша</option>
+            <option value="school2">📚 Підготовка до школи — Старша</option>
+            <option value="logo">🗣 Логопед (індивідуально)</option>
+            <option value="logo_sub">🗣 Логопед (абонемент)</option>
+          </select>
+        </div>
+        <div id="mDateWrap">
+          <label style="font-size:12px;font-weight:700;color:#6B7280;display:block;margin-bottom:4px">ДАТА ПОЧАТКУ</label>
+          <input id="mDate" type="date"
+            style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:14px;outline:none">
+        </div>
+        <div style="background:#F9FAFB;border-radius:10px;padding:12px 14px;font-size:13px;color:#6B7280" id="mInfo">
+          <!-- filled by updateModalFields -->
+        </div>
+        <button onclick="addClientFromModal()"
+          style="background:linear-gradient(135deg,#f472b6,#c084fc);color:#fff;border:none;
+          padding:13px;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer">
+          ✅ Додати клієнта
+        </button>
+      </div>
     </div>
   </div>
 
@@ -388,6 +533,56 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray);color:var(--
       <button class="btn btn-out btn-sm" onclick="exportJSON()" style="margin-top:10px">📥 Завантажити дані (JSON)</button>
     </div>
   </div>
+  <!-- SALARY PAGE -->
+  <div class="page" id="pg-salary">
+    <div class="coming-soon">
+      <div class="cs-icon">💰</div>
+      <h2>Зарплата викладачів</h2>
+      <p>Тут буде автоматичний розрахунок зарплати<br>Лілі, Олени та Юлі на основі відвідувань</p>
+      <div class="cs-badge">🚧 В розробці</div>
+    </div>
+  </div>
+
+  <!-- BOOKING PAGE -->
+  <div class="page" id="pg-booking">
+    <div class="coming-soon">
+      <div class="cs-icon">🎉</div>
+      <h2>Бронювання замовлень</h2>
+      <p>Замовлення свят з Google форми,<br>вигрузка в Google Calendar</p>
+      <div class="cs-badge">🚧 В розробці</div>
+    </div>
+  </div>
+
+  <!-- FINANCE PAGE -->
+  <div class="page" id="pg-finance">
+    <div class="coming-soon">
+      <div class="cs-icon">📊</div>
+      <h2>Фінансовий звіт</h2>
+      <p>Зведена фінансова звітність центру</p>
+      <div class="cs-badge">🚧 В розробці</div>
+    </div>
+  </div>
+
+  <!-- PRICE PAGE -->
+  <div class="page" id="pg-price">
+    <div class="coming-soon">
+      <div class="cs-icon">🏷️</div>
+      <h2>Прайс</h2>
+      <p>Картки послуг з красивими зображеннями<br>для відправки клієнтам</p>
+      <div class="cs-badge">🚧 В розробці</div>
+    </div>
+  </div>
+
+  <!-- CONTACTS PAGE -->
+  <div class="page" id="pg-contacts">
+    <div class="coming-soon">
+      <div class="cs-icon">📋</div>
+      <h2>Контакти співпраці</h2>
+      <p>Аніматори, декоратори, співробітники</p>
+      <div class="cs-badge">🚧 В розробці</div>
+    </div>
+  </div>
+
 </div>
 
 <div class="toast" id="toast"></div>
@@ -553,7 +748,6 @@ function buildClientCardHTML(c) {
   const photo   = (attend[c.id] && attend[c.id]._photo) ? attend[c.id]._photo : '';
   const cross   = c.crossMonth ? ' ↗' : '';
 
-  // HappyZavr color palette
   const stText = status==='active'  ? '🟢 Абонемент активний'
                : status==='ending'  ? '⚠️ Скоро закінчується!'
                : '❌ Абонемент вичерпано';
@@ -566,7 +760,6 @@ function buildClientCardHTML(c) {
   const remColor= remain<=0 ? '#C62828' : remain<=2 ? '#E65100' : '#6A1B9A';
   const barColor= remain<=0 ? '#e57373' : remain<=2 ? '#FFB74D' : '#CE93D8';
 
-  // Dots with HappyZavr colors
   const dots = c.lessonDates.map((iso,i) => {
     const s = att[i] || '';
     const [y,mo,d] = iso.split('-');
@@ -588,19 +781,23 @@ function buildClientCardHTML(c) {
 
   const warnBlock = status==='ending'
     ? `<div style="background:linear-gradient(135deg,#FFF9C4,#FFF176);color:#4E2A00;
-        padding:12px 16px;border-radius:14px;font-size:13px;font-weight:700;
+        padding:10px 16px;border-radius:12px;font-size:13px;font-weight:700;
         text-align:center;margin-bottom:14px;box-shadow:0 2px 8px rgba(255,193,7,.3)">
         🦕 Залишилось лише ${remain} заняття — поновіть абонемент!
       </div>` : '';
 
-  const photoBlock = photo
-    ? `<div style="width:80px;height:80px;border-radius:50%;border:4px solid rgba(255,255,255,.9);
-        margin:0 auto 12px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.2)">
-        <img src="${photo}" style="width:100%;height:100%;object-fit:cover">
+  // Photo section
+  const photoSection = photo
+    ? `<div style="width:100%;height:220px;overflow:hidden;position:relative">
+        <img src="${photo}" style="width:100%;height:100%;object-fit:cover;object-position:center 15%">
+        <div style="position:absolute;bottom:0;left:0;right:0;height:60px;
+          background:linear-gradient(transparent,#fff)"></div>
       </div>`
-    : `<div style="width:72px;height:72px;border-radius:50%;border:3px solid rgba(255,255,255,.7);
-        margin:0 auto 12px;background:rgba(255,255,255,.2);
-        display:flex;align-items:center;justify-content:center;font-size:28px">🦕</div>`;
+    : `<div style="width:100%;height:120px;
+        background:linear-gradient(135deg,#f472b6 0%,#c084fc 50%,#818cf8 100%);
+        display:flex;align-items:center;justify-content:center;font-size:36px">
+        🦕⭐🦕
+      </div>`;
 
   const updatedAt = new Date().toLocaleString('uk-UA');
 
@@ -617,76 +814,84 @@ body{font-family:'Nunito',sans-serif;
   background:linear-gradient(160deg,#FFDEE9 0%,#B5DBFF 50%,#e8d5f5 100%);
   min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
 .card{width:100%;max-width:390px;border-radius:28px;overflow:hidden;
-  box-shadow:0 20px 60px rgba(180,100,220,.25)}
-.hdr{background:linear-gradient(135deg,#f472b6 0%,#c084fc 50%,#818cf8 100%);
-  padding:28px 24px 24px;color:#fff;text-align:center;position:relative}
-.stars{position:absolute;top:0;left:0;right:0;bottom:0;overflow:hidden;pointer-events:none}
-.star{position:absolute;font-size:14px;opacity:.4;animation:twinkle 2s infinite}
-@keyframes twinkle{0%,100%{opacity:.2;transform:scale(1)}50%{opacity:.6;transform:scale(1.2)}}
-.club-logo{font-size:13px;font-weight:800;letter-spacing:2px;text-transform:uppercase;
-  opacity:.9;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:6px}
-.name{font-size:24px;font-weight:900;margin-bottom:4px;text-shadow:0 2px 8px rgba(0,0,0,.15)}
-.dir-badge{display:inline-block;background:rgba(255,255,255,.25);backdrop-filter:blur(4px);
-  border-radius:20px;padding:4px 14px;font-size:13px;font-weight:700;margin-bottom:14px}
-.dates-badge{display:inline-block;background:rgba(255,255,255,.2);
-  border-radius:12px;padding:6px 14px;font-size:12px;font-weight:700;opacity:.9}
-.body{background:#fff;padding:22px 20px}
-.remain-block{text-align:center;margin-bottom:18px;padding:20px 16px;
-  background:linear-gradient(135deg,#fdf4ff,#f5f3ff);
-  border-radius:20px;border:2px solid #e9d5ff}
-.remain-big{font-size:64px;font-weight:900;line-height:1;color:${remColor};
-  text-shadow:0 2px 12px rgba(107,33,168,.2)}
-.remain-lbl{font-size:14px;color:#7C3AED;font-weight:700;margin-top:4px}
-.prog-wrap{margin-bottom:16px}
-.prog-row{display:flex;justify-content:space-between;margin-bottom:8px;align-items:center}
-.prog-lbl{font-size:13px;color:#6B7280;font-weight:600}
-.prog-num{font-size:14px;font-weight:800;color:#4C1D95}
-.prog-bg{height:12px;background:#F3E8FF;border-radius:6px;overflow:hidden}
-.prog-fill{height:100%;border-radius:6px;background:${barColor};width:${pct}%}
-.status{padding:12px;border-radius:16px;text-align:center;font-size:14px;font-weight:800;
-  margin-bottom:16px;background:${stBg};color:${stColor};
-  box-shadow:0 4px 12px rgba(0,0,0,.1)}
+  box-shadow:0 20px 60px rgba(180,100,220,.25);background:#fff}
+
+/* INFO BLOCK */
+.info-block{padding:18px 20px 14px;text-align:center;
+  background:linear-gradient(135deg,#f9f0ff,#fff0f9)}
+.club-logo{font-size:12px;font-weight:800;letter-spacing:2px;text-transform:uppercase;
+  color:#9333EA;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:5px}
+.child-name{font-size:22px;font-weight:900;color:#1a1a2e;margin-bottom:6px}
+.dir-badge{display:inline-block;background:linear-gradient(135deg,#f0abfc,#c084fc);
+  color:#fff;border-radius:20px;padding:4px 14px;font-size:13px;font-weight:700;margin-bottom:8px}
+.dates-tag{font-size:12px;color:#7C3AED;font-weight:600}
+
+/* STATS ROW */
+.stats-row{display:flex;align-items:center;gap:12px;padding:14px 20px;
+  border-top:1px solid #f3e8ff;border-bottom:1px solid #f3e8ff;
+  background:#fdf4ff}
+.remain-box{text-align:center;flex-shrink:0}
+.remain-num{font-size:48px;font-weight:900;line-height:1;color:${remColor}}
+.remain-lbl{font-size:11px;color:#9333EA;font-weight:700;margin-top:2px}
+.prog-box{flex:1}
+.prog-row{display:flex;justify-content:space-between;margin-bottom:6px;align-items:center}
+.prog-lbl{font-size:12px;color:#6B7280;font-weight:600}
+.prog-num{font-size:13px;font-weight:800;color:#4C1D95}
+.prog-bg{height:10px;background:#F3E8FF;border-radius:5px;overflow:hidden}
+.prog-fill{height:100%;border-radius:5px;background:${barColor};width:${pct}%}
+
+/* BODY */
+.body{padding:16px 20px 20px}
+.status{padding:10px;border-radius:14px;text-align:center;font-size:14px;font-weight:800;
+  margin-bottom:14px;background:${stBg};color:${stColor};
+  box-shadow:0 3px 10px rgba(0,0,0,.1)}
 .lessons-hdr{font-size:12px;font-weight:800;color:#9333EA;text-transform:uppercase;
-  letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:6px}
-.dots{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:4px}
+  letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:5px}
+.dots{display:flex;flex-wrap:wrap;gap:7px}
+
+/* FOOTER */
 .footer{background:linear-gradient(135deg,#fdf4ff,#ede9fe);
-  padding:14px 20px;text-align:center;font-size:11px;color:#9333EA;font-weight:600;
+  padding:12px 20px;text-align:center;font-size:11px;color:#9333EA;font-weight:600;
   border-top:2px solid #e9d5ff}
 </style>
 </head>
 <body>
 <div class="card">
-  <div class="hdr">
-    <div class="stars">
-      <span class="star" style="left:10%;top:20%;animation-delay:.2s">⭐</span>
-      <span class="star" style="left:80%;top:15%;animation-delay:.5s">✨</span>
-      <span class="star" style="left:20%;top:70%;animation-delay:.8s">⭐</span>
-      <span class="star" style="left:70%;top:65%;animation-delay:.3s">✨</span>
-      <span class="star" style="left:50%;top:10%;animation-delay:1s">⭐</span>
-    </div>
-    ${photoBlock}
+
+  <!-- 1. ФОТО -->
+  ${photoSection}
+
+  <!-- 2. ІНФОРМАЦІЯ -->
+  <div class="info-block">
     <div class="club-logo">🦕 HappyZavr</div>
-    <div class="name">${c.name}</div>
-    <div class="dir-badge">🎯 ${c.direction}</div><br>
-    <div class="dates-badge">📅 ${c.startDate} → ${c.endDate}${cross}</div>
+    <div class="child-name">${c.name}</div>
+    <div class="dir-badge">🎯 ${c.direction}</div>
+    <div class="dates-tag">📅 ${c.startDate} → ${c.endDate}${cross}</div>
   </div>
-  <div class="body">
-    <div class="remain-block">
-      <div class="remain-big">${remain}</div>
-      <div class="remain-lbl">🎓 занять залишилось</div>
+
+  <!-- 3. СТАТИСТИКА В ОДИН РЯД -->
+  <div class="stats-row">
+    <div class="remain-box">
+      <div class="remain-num">${remain}</div>
+      <div class="remain-lbl">залишилось<br>занять</div>
     </div>
-    <div class="prog-wrap">
+    <div class="prog-box">
       <div class="prog-row">
-        <span class="prog-lbl">✅ Відвідано занять</span>
+        <span class="prog-lbl">✅ Відвідано</span>
         <span class="prog-num">${present} з ${total}</span>
       </div>
       <div class="prog-bg"><div class="prog-fill"></div></div>
     </div>
+  </div>
+
+  <!-- 4. ДАЛІ ЯК ЗВИЧАЙНО -->
+  <div class="body">
     <div class="status">${stText}</div>
     ${warnBlock}
     <div class="lessons-hdr">🗓️ Відвідуваність</div>
     <div class="dots">${dots}</div>
   </div>
+
   <div class="footer">
     🦕 HappyZavr · Картка оновлюється автоматично<br>
     <span style="font-size:10px;opacity:.7">Оновлено: ${updatedAt}</span>
@@ -695,7 +900,6 @@ body{font-family:'Nunito',sans-serif;
 </body>
 </html>`;
 }
-
 function getCardDataUrl(c) {
   const html = buildClientCardHTML(c);
   return 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
@@ -821,6 +1025,208 @@ function loadLocal() {
              setSyncStatus('ok','Хмара активна'); }
     if (clients.length) showMain();
   } catch(e){}
+}
+
+
+// ═══════════════════════════════════════════════════════
+// DIRECTION CONFIG
+// ═══════════════════════════════════════════════════════
+const DIR_CONFIG = {"dance1": {"name": "Танці — Група 1", "days": [1, 3, 5], "total": 12, "duration": 40, "public": "Танці"}, "dance2": {"name": "Танці — Група 2", "days": [1, 3, 5], "total": 12, "duration": 40, "public": "Танці"}, "school1": {"name": "Підготовка — Молодша", "days": [2, 4], "total": 8, "duration": 35, "public": "Підготовка до школи"}, "school2": {"name": "Підготовка — Старша", "days": [2, 4], "total": 8, "duration": 35, "public": "Підготовка до школи"}, "logo": {"name": "Логопед (інд.)", "days": [], "total": 10, "duration": 0, "public": "Логопед"}, "logo_sub": {"name": "Логопед (абонемент)", "days": [2, 4], "total": 8, "duration": 35, "public": "Логопед"}};
+
+let currentDirFilter = 'all';
+
+function setDirTab(el) {
+  document.querySelectorAll('.dir-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  currentDirFilter = el.dataset.dir;
+  renderCards();
+}
+
+function openAddModal() {
+  const m = document.getElementById('addModal');
+  m.style.display = 'flex';
+  // Set today as default date
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('mDate').value = today;
+  updateModalFields();
+}
+
+function closeAddModal() {
+  document.getElementById('addModal').style.display = 'none';
+}
+
+function updateModalFields() {
+  const dir = document.getElementById('mDir').value;
+  const cfg = DIR_CONFIG[dir];
+  const info = document.getElementById('mInfo');
+  const dateWrap = document.getElementById('mDateWrap');
+  
+  if (dir === 'logo') {
+    dateWrap.style.display = 'none';
+    info.innerHTML = '🗣 Індивідуальні заняття · ' + cfg.total + ' занять без дат · Просто 1, 2, 3...';
+  } else {
+    dateWrap.style.display = 'block';
+    const dayNames = ['Нд','Пн','Вт','Ср','Чт','Пт','Сб'];
+    const days = cfg.days.map(d=>dayNames[d]).join(', ');
+    info.innerHTML = '📅 ' + cfg.total + ' занять · ' + cfg.duration + ' днів · Дні: ' + days;
+  }
+}
+
+function addClientFromModal() {
+  const name = document.getElementById('mName').value.trim();
+  if (!name) { toast('⚠️ Введи ФІО дитини', 'warn'); return; }
+
+  const dirKey = document.getElementById('mDir').value;
+  const cfg    = DIR_CONFIG[dirKey];
+  if (!cfg)  { toast('⚠️ Невірний напрямок', 'warn'); return; }
+
+  const dateVal = document.getElementById('mDate').value;
+  const isIndiv = dirKey === 'logo';
+
+  // Parse start date
+  let startDate = dateVal ? new Date(dateVal + 'T00:00:00') : new Date();
+
+  // End date
+  let endDate = (cfg.duration > 0)
+    ? new Date(startDate.getTime() + cfg.duration * 86400000)
+    : null;
+
+  // Format date helper (inline to avoid dependency order issues)
+  const fmt = d => {
+    if (!d) return '';
+    return String(d.getDate()).padStart(2,'0') + '.' +
+           String(d.getMonth()+1).padStart(2,'0') + '.' +
+           d.getFullYear();
+  };
+
+  const isoD = d => {
+    if (!d) return '';
+    return d.getFullYear() + '-' +
+           String(d.getMonth()+1).padStart(2,'0') + '-' +
+           String(d.getDate()).padStart(2,'0');
+  };
+
+  // Generate lesson dates
+  let lessonDates = [];
+  if (isIndiv) {
+    lessonDates = Array.from({length: cfg.total}, (_, i) => 'slot-' + i);
+  } else {
+    // Generate dates by weekday
+    const wds = cfg.days || [1,3];
+    let dt = new Date(startDate);
+    let safety = 0;
+    while (lessonDates.length < cfg.total && safety < 600) {
+      if (wds.includes(dt.getDay())) lessonDates.push(isoD(dt));
+      dt = new Date(dt.getTime() + 86400000);
+      safety++;
+    }
+  }
+
+  const client = {
+    id:           name + '§' + dirKey + '§' + Date.now(),
+    name,
+    direction:    cfg.public,
+    dirKey,
+    groupName:    cfg.name,
+    startDate:    fmt(startDate),
+    endDate:      fmt(endDate),
+    totalLessons: cfg.total,
+    lessonDates,
+    crossMonth:   endDate ? (startDate.getMonth() !== endDate.getMonth() ||
+                  startDate.getFullYear() !== endDate.getFullYear()) : false,
+    isIndividual: isIndiv,
+    duration:     cfg.duration,
+    days:         cfg.days,
+  };
+
+  clients.push(client);
+  attend[client.id] = {};
+  saveAll();
+  closeAddModal();
+  document.getElementById('mName').value = '';
+  showMain();
+  renderAll();
+  toast('✅ ' + name + ' додано!', 'success');
+}
+
+// genLessonDates override removed — handled inline
+
+// ── TRANSFER DAY logic ───────────────────────────────────────────────────
+// When a child is marked absent, offer to add a transfer day (if within subscription)
+function toggleWithTransfer(clientId, idx) {
+  if (!attend[clientId]) attend[clientId]={};
+  const cur = attend[clientId][idx]||'';
+  
+  if (cur === 'present') {
+    attend[clientId][idx] = 'absent';
+    // Check if we can add a transfer day
+    const c = clients.find(x=>x.id===clientId);
+    if (c && !c.isIndividual) checkTransferDay(c, idx);
+  } else if (cur === 'absent') {
+    // Remove transfer day if exists
+    attend[clientId][idx] = '';
+    const c = clients.find(x=>x.id===clientId);
+    if (c) removeTransferDay(c, idx);
+  } else {
+    attend[clientId][idx] = 'present';
+  }
+  
+  const c = clients.find(x=>x.id===clientId);
+  if (c) {
+    const el = document.getElementById('cr-'+CSS.escape(clientId));
+    if (el) el.outerHTML = buildCard(c);
+  }
+  renderStats();
+  localStorage.setItem('hp_clients', JSON.stringify(clients));
+  localStorage.setItem('hp_attend',  JSON.stringify(attend));
+}
+
+function checkTransferDay(c, absentIdx) {
+  if (!c.endDate) return;
+  const endDate = parseDate(c.endDate);
+  if (!endDate) return;
+  
+  // Find next available slot after last lesson date, within subscription
+  const lastLessonDate = c.lessonDates[c.lessonDates.length-1];
+  if (!lastLessonDate || lastLessonDate.startsWith('slot-')) return;
+  
+  let nextDate = new Date(lastLessonDate);
+  nextDate.setDate(nextDate.getDate() + 1);
+  
+  const wds = c.days || [1,3,5];
+  let found = null;
+  let safety = 0;
+  while (nextDate <= endDate && safety < 60) {
+    if (wds.includes(nextDate.getDay())) {
+      found = isoDate(nextDate);
+      break;
+    }
+    nextDate.setDate(nextDate.getDate()+1);
+    safety++;
+  }
+  
+  if (found) {
+    // Add transfer date
+    c.lessonDates.push(found);
+    c.totalLessons = c.lessonDates.length;
+    // Mark as transfer
+    if (!attend[c.id]._transfers) attend[c.id]._transfers = {};
+    attend[c.id]._transfers[c.lessonDates.length-1] = true;
+    localStorage.setItem('hp_clients', JSON.stringify(clients));
+  }
+}
+
+function removeTransferDay(c, absentIdx) {
+  // Remove last transfer day if it was added for this absence
+  const transfers = attend[c.id]._transfers || {};
+  const lastIdx = c.lessonDates.length - 1;
+  if (transfers[lastIdx]) {
+    c.lessonDates.pop();
+    c.totalLessons = c.lessonDates.length;
+    delete transfers[lastIdx];
+    attend[c.id]._transfers = transfers;
+    localStorage.setItem('hp_clients', JSON.stringify(clients));
+  }
 }
 
 function uploadPhoto(clientId, input) {
@@ -967,11 +1373,12 @@ function parseRows(rows) {
     return kws.some(w => kl.includes(w));
   }) || '';
 
-  const cName  = find('фіо','клієнт','дитин','ребён','name');
-  const cDir   = find('напрям','направ','direction','тип','group');
-  const cStart = find('початк','начал','start','дата п');
-  const cEnd   = find('кінц','конц','end','дата к');
-  const cTotal = find('к-сть','кількіс','занят','кол','count','total','lesson');
+  const cName   = find('фіо','клієнт','дитин','ребён','name');
+  const cDirKey = find('dirkey','dir_key','ключ');
+  const cDir    = find('напрям','направ','direction','тип','group');
+  const cStart  = find('початк','начал','start','дата п');
+  const cEnd    = find('кінц','конц','end','дата к');
+  const cTotal  = find('к-сть','кількіс','занят','кол','count','total','lesson');
 
   // Fallback: use column by index if keyword search fails
   // Clean Excel: №=0 ФІО=1 Напрямок=2 ДатаПоч=3 КстьЗан=4 ДатаКін=5 Ціна=6
@@ -980,7 +1387,7 @@ function parseRows(rows) {
   rows.forEach(row => {
     // Get name — try detected column, then index 1 (ФІО column)
     const rawName = row[cName] || row[byIdx(1)] || row[byIdx(0)] || '';
-    const name = rawName.toString().trim();
+    const name = (rawName + '').trim();
 
     // Skip empty, too short, header-looking, or emoji-only rows
     if (!name || name.length < 2) return;
@@ -988,36 +1395,51 @@ function parseRows(rows) {
     if (/^[🦕💡📖✅]/.test(name)) return; // skip emoji header rows
 
     // Direction
-    const dir = (row[cDir] || row[byIdx(2)] || 'Загальне').toString().trim();
+        // Get dirKey — drives all logic
+    const dirKeyRaw = ((row[cDirKey]||row[byIdx(2)]||'') + '').trim().toLowerCase();
+    const dirCfg    = DIR_CONFIG[dirKeyRaw] || null;
+    const dir = dirCfg ? dirCfg.public : ((row[cDir]||row[byIdx(2)]||'Загальне') + '').trim();
 
     // Dates — XLSX with cellDates:true returns JS Date objects, raw:false returns strings
     const startRaw = row[cStart] || row[byIdx(3)] || '';
     const endRaw   = row[cEnd]   || row[byIdx(5)] || '';
 
     // Total lessons
-    const totalRaw = row[cTotal] || row[byIdx(4)] || '8';
-    const totalNum = parseInt(String(totalRaw).replace(/[^\d]/g,'')) || 8;
-    const total    = Math.max(1, totalNum);
+    const totalRaw = row[cTotal] || row[byIdx(4)] || '';
+    const total = dirCfg ? dirCfg.total : Math.max(1, parseInt(String(totalRaw).replace(/[^\d]/g,''))||8);
+    const dur   = dirCfg ? dirCfg.duration : 35;
+    const wds   = dirCfg ? dirCfg.days : [1,3];
+    const isIndiv = dirKeyRaw === 'logo';
 
     // Parse dates
-    const startDate = parseDate(startRaw);
-    if (!startDate) { console.warn('Skip (no start date):', name, startRaw); return; }
+    let startDate = parseDate(startRaw);
+    if (!startDate && !isIndiv) { console.warn('Skip (no date):', name); return; }
+    if (!startDate) startDate = new Date();
 
     let endDate = endRaw ? parseDate(endRaw) : null;
-    if (!endDate) endDate = new Date(startDate.getTime() + 35*86400000);
+    if (!endDate && dur > 0) endDate = new Date(startDate.getTime() + dur*86400000);
 
-    const crossMonth = startDate.getMonth()  !== endDate.getMonth() ||
-                       startDate.getFullYear()!== endDate.getFullYear();
+    const crossMonth = endDate ? (startDate.getMonth() !== endDate.getMonth() ||
+      startDate.getFullYear() !== endDate.getFullYear()) : false;
+
+    const lessonDates = isIndiv
+      ? Array.from({length: total}, (_,i) => 'slot-'+i)
+      : genLessonDates(startDate, total, null, wds.length ? wds : null);
 
     res.push({
-      id:           name + '§' + dir,
+      id:           name + '§' + (dirKeyRaw||dir) + '§' + (startRaw||'x'),
       name,
       direction:    dir,
-      startDate:    fmtDate(startDate),
-      endDate:      fmtDate(endDate),
+      dirKey:       dirKeyRaw || null,
+      groupName:    dirCfg ? dirCfg.name : dir,
+      startDate:    startDate ? fmtDate(startDate) : '',
+      endDate:      endDate   ? fmtDate(endDate)   : '',
       totalLessons: total,
-      lessonDates:  genLessonDates(startDate, total, dir),
-      crossMonth
+      lessonDates,
+      crossMonth,
+      isIndividual: isIndiv,
+      duration:     dur,
+      days:         wds,
     });
   });
 
@@ -1107,7 +1529,7 @@ function getRemain(c) { return Math.max(0, c.totalLessons - getPresent(c)); }
 
 function getStatus(c) {
   const rem  = getRemain(c);
-  const endD = parseDate(c.endDate);
+  const endD = c.endDate ? parseDate(c.endDate) : null;
   const today= new Date(); today.setHours(0,0,0,0);
   if (rem<=0||(endD&&endD<today)) return 'expired';
   if (rem<=2) return 'ending';
@@ -1115,16 +1537,14 @@ function getStatus(c) {
 }
 
 function toggle(clientId, idx) {
-  if (!attend[clientId]) attend[clientId]={};
-  const cur = attend[clientId][idx]||'';
-  attend[clientId][idx] = cur===''?'present':cur==='present'?'absent':'';
+  toggleWithTransfer(clientId, idx);
   const c = clients.find(x=>x.id===clientId);
   if (c) {
     const el = document.getElementById('cr-'+CSS.escape(clientId));
     if (el) el.outerHTML = buildCard(c);
   }
   renderStats();
-  saveAll(); // auto-sync after every mark
+  saveAll();
 }
 
 function markAll(cid, val) {
@@ -1166,34 +1586,45 @@ function renderStats() {
 }
 
 function renderFilters() {
-  const dirs=[...new Set(clients.map(c=>c.direction))];
-  const sel=document.getElementById('fDir');
-  const cur=sel.value;
-  sel.innerHTML='<option value="">Всі напрямки</option>'+
-    dirs.map(d=>`<option value="${d}"${d===cur?' selected':''}>${d}</option>`).join('');
+  // Direction tabs replace the old dropdown
+  // Update dir tab counts
+  document.querySelectorAll('.dir-tab').forEach(tab => {
+    const dir = tab.dataset.dir;
+    const count = dir === 'all' ? clients.length 
+      : clients.filter(c=>c.dirKey===dir).length;
+    if (count > 0 && !tab.querySelector('.dir-count')) {
+      // show count as small badge
+    }
+  });
 }
 
 function renderCards() {
-  const dir=document.getElementById('fDir').value;
-  const search=document.getElementById('fSearch').value.toLowerCase();
-  const st=document.getElementById('fStatus').value;
-  const filtered=clients.filter(c=>{
-    if(dir&&c.direction!==dir) return false;
-    if(search&&!c.name.toLowerCase().includes(search)) return false;
-    if(st&&getStatus(c)!==st) return false;
+  const search = (document.getElementById('fSearch')||{}).value||'';
+  const sl = search.toLowerCase();
+  const st = (document.getElementById('fStatus')||{}).value||'';
+  const filtered = clients.filter(c=>{
+    if (currentDirFilter && currentDirFilter !== 'all') {
+      // Match by dirKey if available, or by direction name
+      const cfg = DIR_CONFIG[currentDirFilter];
+      const matchByKey  = c.dirKey === currentDirFilter;
+      const matchByName = cfg && (c.direction === cfg.public || c.direction === cfg.name);
+      if (!matchByKey && !matchByName) return false;
+    }
+    if (sl && !c.name.toLowerCase().includes(sl)) return false;
+    if (st && getStatus(c) !== st) return false;
     return true;
   });
-  document.getElementById('cntBadge').textContent=filtered.length;
-  if(!filtered.length){
-    document.getElementById('cardsGrid').innerHTML=`<div class="empty" style="grid-column:1/-1">
-      <div class="eico">🔍</div><h3>Нічого не знайдено</h3><p>Змін фільтри</p></div>`;
+  document.getElementById('cntBadge').textContent = filtered.length;
+  if (!filtered.length) {
+    document.getElementById('cardsGrid').innerHTML = `<div class="empty" style="grid-column:1/-1">
+      <div class="eico">🔍</div><h3>Нічого не знайдено</h3></div>`;
     return;
   }
-  document.getElementById('cardsGrid').innerHTML=filtered.map(buildCard).join('');
+  document.getElementById('cardsGrid').innerHTML = filtered.map(buildCard).join('');
 }
 
 function dirClass(dir) {
-  const d=dir.toLowerCase();
+  const d = (dir||'').toLowerCase();
   if(d.includes('танц')) return 'dp-dance';
   if(d.includes('школ')||d.includes('підгот')) return 'dp-school';
   return 'dp-other';
@@ -1214,22 +1645,26 @@ function buildCard(c) {
 
   const cross=c.crossMonth?`<span class="cross-m" title="Переходить у наступний місяць">↗ між місяцями</span>`:'';
 
-  const dots=c.lessonDates.map((iso,i)=>{
+  const dots=(c.lessonDates||[]).map((iso,i)=>{
     const s=att[i]||'';
-    const [y,mo,d]=iso.split('-');
+    const isSlot = !iso || iso.startsWith('slot-');
+    const parts  = isSlot ? [] : iso.split('-');
+    const [y,mo,d] = parts.length===3 ? parts : ['','',''];
+    const dateStr  = isSlot ? '' : (d+'.'+mo);
+    const tipStr   = isSlot ? ('Заняття '+(i+1)) : (d+'.'+mo+'.'+y);
     const icon=s==='present'?'✓':s==='absent'?'✗':'';
     const cls=s==='present'?'present':s==='absent'?'absent':'';
-    return `<div class="dot ${cls}" onclick="toggle('${esc(c.id)}',${i})" title="${d}.${mo}.${y}">
+    return `<div class="dot ${cls}" onclick="toggle('${esc(c.id)}',${i})" title="${tipStr}">
       <span>${icon||i+1}</span>
-      <span class="ddate">${d}.${mo}</span>
-      <span class="dot-tip">${d}.${mo}.${y}</span>
+      <span class="ddate">${dateStr}</span>
+      <span class="dot-tip">${tipStr}</span>
     </div>`;
   }).join('');
 
   return `<div class="card ${cardCls}" id="cr-${CSS.escape(c.id)}">
   <div class="card-top">
     <div class="card-name">${c.name}</div>
-    <div class="dir-pill ${dirClass(c.direction)}">${c.direction}</div>
+    <div class="dir-pill ${dirClass(c.direction)}">${c.direction}${groupTag}</div>
   </div>
   <div class="card-dates">
     <span>📅 ${c.startDate}</span><span>→</span>
@@ -1337,13 +1772,37 @@ function copyCardLink(id) {
 // ═══════════════════════════════════════════════════════
 // UI HELPERS
 // ═══════════════════════════════════════════════════════
-function switchTab(el) {
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+function openSidebar() {
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('sbOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sbOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+const pageTitles = {
+  attend:'Відвідування', cards:'Картки для батьків', salary:'Зарплата викладачів',
+  booking:'Бронювання замовлень', finance:'Фінансовий звіт',
+  price:'Прайс', contacts:'Контакти співпраці', setup:'Налаштування'
+};
+function navTo(el) {
+  document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
   el.classList.add('active');
-  const tab = el.dataset.tab;
-  document.getElementById('pg-'+tab).classList.add('active');
-  if (tab==='cards') renderCardLinks();
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const page = el.dataset.page;
+  const pg = document.getElementById('pg-'+page);
+  if (pg) pg.classList.add('active');
+  const titleEl = document.getElementById('pageTitle');
+  if (titleEl) titleEl.textContent = pageTitles[page]||'';
+  if (page==='cards') renderCardLinks();
+  closeSidebar();
+}
+function switchTab(el) {
+  const tab = el.dataset ? el.dataset.tab : '';
+  const sbItem = document.querySelector('.sb-item[data-page="'+tab+'"]');
+  if (sbItem) navTo(sbItem);
 }
 
 function doDrop(e) {
