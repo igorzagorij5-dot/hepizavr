@@ -1620,7 +1620,15 @@ function renderCards() {
       <div class="eico">🔍</div><h3>Нічого не знайдено</h3></div>`;
     return;
   }
-  document.getElementById('cardsGrid').innerHTML = filtered.map(buildCard).join('');
+  const cardHtmls = filtered.map(c => {
+    try { return buildCard(c); }
+    catch(e) {
+      console.error('buildCard error for', c.name, e);
+      return `<div class="card" style="padding:16px;border:2px solid red">
+        <b>${c.name||'?'}</b><br><small style="color:red">${e.message}</small></div>`;
+    }
+  });
+  document.getElementById('cardsGrid').innerHTML = cardHtmls.join('');
 }
 
 function dirClass(dir) {
