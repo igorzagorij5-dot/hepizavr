@@ -270,6 +270,29 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray);color:var(--
 .dir-tab:hover{border-color:#c084fc;color:#6b21a8}
 .dir-tab.active{background:linear-gradient(135deg,#f472b6,#c084fc);
   color:#fff;border-color:transparent;box-shadow:0 3px 10px rgba(192,132,252,.4)}
+
+/* ── SALARY ── */
+.sal-card{background:#fff;border-radius:16px;box-shadow:0 1px 4px rgba(0,0,0,.08);overflow:hidden}
+.sal-card-hdr{padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.sal-teacher-name{font-size:16px;font-weight:800;color:#fff}
+.sal-teacher-role{font-size:12px;opacity:.8;color:#fff;margin-top:2px}
+.sal-total-badge{background:rgba(255,255,255,.25);color:#fff;font-size:18px;font-weight:900;
+  padding:6px 16px;border-radius:20px;white-space:nowrap}
+.sal-body{padding:16px 20px}
+.sal-group{margin-bottom:14px;background:var(--gray);border-radius:12px;overflow:hidden}
+.sal-group-hdr{padding:10px 14px;font-size:13px;font-weight:700;display:flex;
+  align-items:center;justify-content:space-between}
+.sal-lesson-row{display:flex;align-items:center;padding:8px 14px;border-top:1px solid var(--border);
+  font-size:13px;gap:10px}
+.sal-lesson-date{color:var(--text2);font-size:12px;min-width:60px}
+.sal-lesson-kids{color:var(--text2);font-size:12px;flex:1}
+.sal-lesson-rate{font-weight:700;color:var(--grn);white-space:nowrap}
+.sal-sum-row{padding:10px 14px;border-top:2px solid var(--border);display:flex;
+  justify-content:space-between;font-weight:800;font-size:14px}
+.sal-share-btn{display:flex;align-items:center;gap:6px;padding:8px 14px;border:none;
+  background:rgba(255,255,255,.2);color:#fff;border-radius:8px;cursor:pointer;
+  font-size:12px;font-weight:600;transition:background .15s}
+.sal-share-btn:hover{background:rgba(255,255,255,.35)}
 </style>
 </head>
 <body>
@@ -537,12 +560,18 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray);color:var(--
   </div>
   <!-- SALARY PAGE -->
   <div class="page" id="pg-salary">
-    <div class="coming-soon">
-      <div class="cs-icon">💰</div>
-      <h2>Зарплата викладачів</h2>
-      <p>Тут буде автоматичний розрахунок зарплати<br>Лілі, Олени та Юлі на основі відвідувань</p>
-      <div class="cs-badge">🚧 В розробці</div>
+
+    <!-- MONTH SELECTOR -->
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:20px;flex-wrap:wrap">
+      <select id="salMonth" onchange="renderSalary()"
+        style="padding:9px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-weight:600;background:#fff;outline:none">
+      </select>
+      <span style="font-size:13px;color:var(--text2)">Оберіть місяць для розрахунку</span>
     </div>
+
+    <!-- TEACHER CARDS -->
+    <div style="display:flex;flex-direction:column;gap:16px" id="salaryCards"></div>
+
   </div>
 
   <!-- BOOKING PAGE -->
@@ -622,6 +651,67 @@ window.onload = async function() {
 // ═══════════════════════════════════════════════════════
 // PUBLIC CARD
 // ═══════════════════════════════════════════════════════
+function showSalaryCard(encoded) {
+  document.getElementById('adminView').style.display = 'none';
+  document.getElementById('pubView').style.display   = 'block';
+  document.title = '💰 Зарплата — HappyZavr';
+  try {
+    const data = JSON.parse(decodeURIComponent(atob(encoded)));
+    const months = ['Січень','Лютий','Березень','Квітень','Травень','Червень',
+                    'Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
+    const [y,m] = data.month.split('-').map(Number);
+    const monthLabel = months[m-1] + ' ' + y;
+
+    const groupsHtml = data.groups.map(g => {
+      if (!g.lessons.length) return '';
+      const rows = g.lessons.map(l => {
+        const rate = l.present >= 5 ? g.rate5plus : g.rateBelow5;
+        return `<tr>
+          <td style="padding:8px 12px;color:#6B7280;font-size:12px">${l.dateStr}</td>
+          <td style="padding:8px 12px;font-size:12px">${l.present} дітей</td>
+          <td style="padding:8px 12px;font-weight:700;color:#059669;text-align:right">${rate} ₴</td>
+        </tr>`;
+      }).join('');
+      return `<div style="margin-bottom:14px">
+        <div style="font-size:13px;font-weight:800;color:#4C1D95;padding:8px 12px;
+          background:#EDE9FE;border-radius:8px 8px 0 0">${g.label} · ${g.lessons.length} занять</div>
+        <table style="width:100%;border-collapse:collapse">
+          ${rows}
+          <tr style="background:#F5F3FF">
+            <td colspan="2" style="padding:8px 12px;font-weight:800">Разом:</td>
+            <td style="padding:8px 12px;font-weight:900;color:#6D28D9;text-align:right">${g.total.toLocaleString('uk')} ₴</td>
+          </tr>
+        </table>
+      </div>`;
+    }).join('');
+
+    const html = `<div style="font-family:'Segoe UI',Arial,sans-serif;background:linear-gradient(135deg,#EDE9FE,#FCE7F3);
+      min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px">
+      <div style="background:#fff;border-radius:20px;width:100%;max-width:420px;
+        box-shadow:0 20px 60px rgba(0,0,0,.2);overflow:hidden">
+        <div style="background:linear-gradient(135deg,#7C3AED,#A855F7);padding:24px;color:#fff;text-align:center">
+          <div style="font-size:12px;opacity:.7;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">🦕 HappyZavr</div>
+          <div style="font-size:24px;font-weight:900;margin-bottom:4px">💰 ${data.name}</div>
+          <div style="font-size:14px;opacity:.8;margin-bottom:16px">${data.role}</div>
+          <div style="background:rgba(255,255,255,.2);border-radius:12px;padding:12px">
+            <div style="font-size:13px;opacity:.8">Зарплата за ${monthLabel}</div>
+            <div style="font-size:40px;font-weight:900;margin:4px 0">${data.grandTotal.toLocaleString('uk')} ₴</div>
+          </div>
+        </div>
+        <div style="padding:20px">${groupsHtml}</div>
+        <div style="background:#F5F3FF;padding:12px 20px;text-align:center;
+          font-size:11px;color:#9333EA;font-weight:600">
+          🦕 HappyZavr · Тільки для перегляду
+        </div>
+      </div>
+    </div>`;
+
+    document.getElementById('pubView').innerHTML = html;
+  } catch(e) {
+    document.getElementById('pubView').innerHTML = '<div style="padding:40px;text-align:center">Помилка зчитування</div>';
+  }
+}
+
 async function loadPublicCard(cardId) {
   try {
     // The binId is encoded in the card URL itself after the | separator
@@ -1086,27 +1176,21 @@ function addClientFromModal() {
   const cfg    = DIR_CONFIG[dirKey];
   if (!cfg)  { toast('⚠️ Невірний напрямок', 'warn'); return; }
 
-  const dateVal = document.getElementById('mDate').value;
+  const dateVal  = document.getElementById('mDate').value;
   const isIndiv  = dirKey === 'logo';
   const isSingle = dirKey === 'single';
 
-  // Parse start date
   let startDate = dateVal ? new Date(dateVal + 'T00:00:00') : new Date();
 
-  // End date
-  let endDate = (cfg.duration > 0)
+  let endDate = cfg.duration > 0
     ? new Date(startDate.getTime() + cfg.duration * 86400000)
-    : isSingle ? startDate  // single: end = same day
-    : null;
+    : isSingle ? new Date(startDate) : null;
 
-  // Format date helper (inline to avoid dependency order issues)
   const fmt = d => {
     if (!d) return '';
     return String(d.getDate()).padStart(2,'0') + '.' +
-           String(d.getMonth()+1).padStart(2,'0') + '.' +
-           d.getFullYear();
+           String(d.getMonth()+1).padStart(2,'0') + '.' + d.getFullYear();
   };
-
   const isoD = d => {
     if (!d) return '';
     return d.getFullYear() + '-' +
@@ -1114,16 +1198,31 @@ function addClientFromModal() {
            String(d.getDate()).padStart(2,'0');
   };
 
+  // For single lesson — check if same child already has single lessons and just add date
+  if (isSingle) {
+    const existing = clients.find(x => x.name === name && x.dirKey === 'single');
+    if (existing) {
+      const newDate = isoD(startDate);
+      if (!existing.lessonDates.includes(newDate)) {
+        existing.lessonDates.push(newDate);
+        existing.totalLessons = existing.lessonDates.length;
+      }
+      saveAll();
+      closeAddModal();
+      document.getElementById('mName').value = '';
+      renderAll();
+      toast('✅ Додано заняття ' + fmt(startDate) + ' для ' + name, 'success');
+      return;
+    }
+  }
+
   // Generate lesson dates
   let lessonDates = [];
-
   if (isIndiv) {
     lessonDates = Array.from({length: cfg.total}, (_, i) => 'slot-' + i);
   } else if (isSingle) {
-    // Single lesson — just one date
     lessonDates = [isoD(startDate)];
   } else {
-    // Generate dates by weekday
     const wds = cfg.days || [1,3];
     let dt = new Date(startDate);
     let safety = 0;
@@ -1134,27 +1233,6 @@ function addClientFromModal() {
     }
   }
 
-  // For single: check if client already exists and just add a lesson
-  if (isSingle) {
-    if (existing) {
-      // Add new lesson date to existing client
-      const newDate = isoD(startDate);
-      if (!existing.lessonDates.includes(newDate)) {
-        existing.lessonDates.push(newDate);
-        existing.totalLessons = existing.lessonDates.length;
-        saveAll();
-        closeAddModal();
-        document.getElementById('mName').value = '';
-        renderAll();
-        toast('✅ Додано разове заняття ' + name + ' — ' + fmt(startDate), 'success');
-      } else {
-        toast('⚠️ Це заняття вже додано для ' + name, 'warn');
-      }
-      return;
-    }
-  }
-
-
   const client = {
     id:           name + '§' + dirKey + '§' + Date.now(),
     name,
@@ -1163,12 +1241,11 @@ function addClientFromModal() {
     groupName:    cfg.name,
     startDate:    fmt(startDate),
     endDate:      fmt(endDate),
-    totalLessons: cfg.total,
+    totalLessons: isSingle ? 1 : cfg.total,
     lessonDates,
-    crossMonth:   false,
+    crossMonth:   endDate ? (startDate.getMonth() !== endDate.getMonth() ||
+                  startDate.getFullYear() !== endDate.getFullYear()) : false,
     isIndividual: isIndiv,
-    isSingle:     isSingle,
-    singleDate:   isSingle ? fmt(startDate) : '',
     duration:     cfg.duration,
     days:         cfg.days,
   };
@@ -1273,6 +1350,208 @@ function deleteClient(clientId) {
   renderAll();
   toast('🗑 ' + c.name + ' видалено', 'success');
 }
+
+
+// ═══════════════════════════════════════════════════════
+// SALARY CALCULATION
+// ═══════════════════════════════════════════════════════
+
+// Teacher config
+const TEACHERS = [
+  {
+    id: 'lily',
+    name: 'Ліля',
+    role: 'Танці',
+    color: '#7C3AED',
+    color2: '#A855F7',
+    groups: [
+      { dirKey: 'dance1', label: 'Танці — Група 1', rateBelow5: 450, rate5plus: 500 },
+      { dirKey: 'dance2', label: 'Танці — Група 2', rateBelow5: 450, rate5plus: 500 },
+    ]
+  },
+  {
+    id: 'olena',
+    name: 'Олена',
+    role: 'Підготовка до школи',
+    color: '#059669',
+    color2: '#10B981',
+    groups: [
+      { dirKey: 'school1', label: 'Молодша група',  rateBelow5: 450, rate5plus: 450 },
+      { dirKey: 'school2', label: 'Старша група',   rateBelow5: 650, rate5plus: 650 },
+    ]
+  },
+  {
+    id: 'yulia',
+    name: 'Юля',
+    role: 'Логопед',
+    color: '#B45309',
+    color2: '#D97706',
+    groups: [
+      { dirKey: 'logo',     label: 'Індивідуально', rateBelow5: 400, rate5plus: 400 },
+      { dirKey: 'logo_sub', label: 'Абонемент',     rateBelow5: 400, rate5plus: 400 },
+    ]
+  },
+];
+
+function initSalaryMonths() {
+  const sel = document.getElementById('salMonth');
+  if (!sel) return;
+  const months = ['Січень','Лютий','Березень','Квітень','Травень','Червень',
+                  'Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
+  const now = new Date();
+  sel.innerHTML = '';
+  // Show last 6 months + current
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const val = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+    const label = months[d.getMonth()] + ' ' + d.getFullYear();
+    const opt = document.createElement('option');
+    opt.value = val; opt.textContent = label;
+    if (i === 0) opt.selected = true;
+    sel.appendChild(opt);
+  }
+}
+
+function renderSalary() {
+  const sel = document.getElementById('salMonth');
+  if (!sel) return;
+  const [year, month] = sel.value.split('-').map(Number);
+
+  const container = document.getElementById('salaryCards');
+  if (!container) return;
+
+  container.innerHTML = TEACHERS.map(teacher => buildTeacherCard(teacher, year, month)).join('');
+}
+
+function getLessonsForGroup(dirKey, year, month) {
+  // Get all clients in this group
+  const groupClients = clients.filter(c => c.dirKey === dirKey);
+  if (!groupClients.length) return [];
+
+  // Get all unique lesson dates in this month across all clients
+  const lessonDatesSet = new Set();
+  groupClients.forEach(c => {
+    (c.lessonDates || []).forEach(iso => {
+      if (!iso || iso.startsWith('slot-')) return;
+      const [y, mo] = iso.split('-').map(Number);
+      if (y === year && mo === month) lessonDatesSet.add(iso);
+    });
+  });
+
+  // For each lesson date, count how many kids were present
+  // Only include dates where AT LEAST ONE child was marked present
+  const results = [];
+  Array.from(lessonDatesSet).sort().forEach(iso => {
+    const [y, mo, d] = iso.split('-');
+    const present = groupClients.filter(c => {
+      const idx = (c.lessonDates || []).indexOf(iso);
+      if (idx < 0) return false;
+      return attend[c.id] && attend[c.id][idx] === 'present';
+    }).length;
+
+    // Skip days where nobody came — lesson didn't happen
+    if (present === 0) return;
+
+    results.push({ date: iso, dateStr: d+'.'+mo, present });
+  });
+  return results;
+}
+
+function buildTeacherCard(teacher, year, month) {
+  let teacherTotal = 0;
+  const months = ['Січень','Лютий','Березень','Квітень','Травень','Червень',
+                  'Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
+  const monthLabel = months[month-1] + ' ' + year;
+
+  const groupsHtml = teacher.groups.map(group => {
+    const lessons = getLessonsForGroup(group.dirKey, year, month);
+    if (!lessons.length) {
+      return `<div class="sal-group">
+        <div class="sal-group-hdr">
+          <span>${group.label}</span>
+          <span style="color:var(--text3);font-size:12px">Занять не знайдено</span>
+        </div>
+      </div>`;
+    }
+
+    let groupTotal = 0;
+    const rows = lessons.map(l => {
+      const rate = l.present >= 5 ? group.rate5plus : group.rateBelow5;
+      groupTotal += rate;
+      const kidsColor = l.present >= 5 ? 'var(--grn)' : 'var(--text2)';
+      return `<div class="sal-lesson-row">
+        <span class="sal-lesson-date">${l.dateStr}</span>
+        <span class="sal-lesson-kids" style="color:${kidsColor}">👥 ${l.present} дітей</span>
+        <span class="sal-lesson-rate">${rate} ₴</span>
+      </div>`;
+    }).join('');
+
+    teacherTotal += groupTotal;
+
+    return `<div class="sal-group">
+      <div class="sal-group-hdr" style="background:${teacher.color}15">
+        <span style="color:${teacher.color};font-weight:800">${group.label}</span>
+        <span style="color:${teacher.color};font-weight:800">${lessons.length} занять</span>
+      </div>
+      ${rows}
+      <div class="sal-sum-row">
+        <span>Разом за групу:</span>
+        <span style="color:${teacher.color}">${groupTotal.toLocaleString('uk')} ₴</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  return `<div class="sal-card">
+    <div class="sal-card-hdr" style="background:linear-gradient(135deg,${teacher.color},${teacher.color2})">
+      <div>
+        <div class="sal-teacher-name">👤 ${teacher.name}</div>
+        <div class="sal-teacher-role">${teacher.role} · ${monthLabel}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="sal-total-badge">${teacherTotal.toLocaleString('uk')} ₴</div>
+        <button class="sal-share-btn" onclick="shareSalary('${teacher.id}','${year}-${String(month).padStart(2,'0')}')">
+          🔗 Посилання
+        </button>
+      </div>
+    </div>
+    <div class="sal-body">
+      ${groupsHtml}
+      ${teacher.groups.length > 1 ? `<div style="padding:12px 14px;background:${teacher.color}10;
+        border-radius:10px;display:flex;justify-content:space-between;font-size:15px;font-weight:900;
+        margin-top:4px">
+        <span>💰 ЗАГАЛЬНА СУМА ЗП:</span>
+        <span style="color:${teacher.color}">${teacherTotal.toLocaleString('uk')} ₴</span>
+      </div>` : ''}
+    </div>
+  </div>`;
+}
+
+function shareSalary(teacherId, monthStr) {
+  // Build salary card URL — same approach as client cards
+  const teacher = TEACHERS.find(t=>t.id===teacherId);
+  if (!teacher) return;
+  const [year, month] = monthStr.split('-').map(Number);
+
+  // Build data for the card
+  const salData = {
+    teacherId,
+    name: teacher.name,
+    role: teacher.role,
+    month: monthStr,
+    groups: teacher.groups.map(g => {
+      const lessons = getLessonsForGroup(g.dirKey, year, month);
+      const total = lessons.reduce((s, l) => s + (l.present >= 5 ? g.rate5plus : g.rateBelow5), 0);
+      return { label: g.label, lessons, total, rateBelow5: g.rateBelow5, rate5plus: g.rate5plus };
+    }),
+  };
+  salData.grandTotal = salData.groups.reduce((s,g)=>s+g.total, 0);
+
+  const encoded = btoa(encodeURIComponent(JSON.stringify(salData)));
+  const url = 'https://igorzagorij5-dot.github.io/hepizavr/?salary=' + encoded;
+  copyText(url);
+  toast('🔗 Посилання скопійовано! Відправ викладачу.', 'success');
+}
+
 
 function uploadPhoto(clientId, input) {
   const file = input.files[0];
@@ -1854,6 +2133,7 @@ function navTo(el) {
   const titleEl = document.getElementById('pageTitle');
   if (titleEl) titleEl.textContent = pageTitles[page]||'';
   if (page==='cards') renderCardLinks();
+  if (page==='salary') { initSalaryMonths(); renderSalary(); }
   closeSidebar();
 }
 function switchTab(el) {
