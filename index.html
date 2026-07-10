@@ -393,6 +393,8 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray);color:var(--
       <button class="dir-tab" data-dir="school1" onclick="setDirTab(this)">📚 Підгот. Молодша</button>
       <button class="dir-tab" data-dir="school2" onclick="setDirTab(this)">📚 Підгот. Старша</button>
       <button class="dir-tab" data-dir="logo" onclick="setDirTab(this)">🗣 Логопед</button>
+      <button class="dir-tab" data-dir="single" onclick="setDirTab(this)">⚡ Разове</button>
+      <button class="dir-tab" data-dir="single_dance" onclick="setDirTab(this)">💃 Разове</button>
       <button class="dir-tab" data-dir="dance_single" onclick="setDirTab(this)">💃 Разове</button>
       <button class="btn btn-acc btn-sm" style="margin-left:auto" onclick="openAddModal()">+ Додати</button>
     </div>
@@ -451,6 +453,8 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray);color:var(--
             <option value="school2">📚 Підготовка до школи — Старша</option>
             <option value="logo">🗣 Логопед (індивідуально)</option>
             <option value="logo_sub">🗣 Логопед (абонемент)</option>
+            <option value="single">💃 Разове заняття (Танці)</option>
+            <option value="single_dance">💃 Разове заняття (Танці)</option>
             <option value="dance_single">💃 Танці — Разове заняття</option>
           </select>
         </div>
@@ -1087,7 +1091,8 @@ function addClientFromModal() {
   if (!cfg)  { toast('⚠️ Невірний напрямок', 'warn'); return; }
 
   const dateVal = document.getElementById('mDate').value;
-  const isIndiv = dirKey === 'logo';
+  const isIndiv  = dirKey === 'logo';
+  const isSingle = dirKey === 'single';
 
   // Parse start date
   let startDate = dateVal ? new Date(dateVal + 'T00:00:00') : new Date();
@@ -1095,6 +1100,7 @@ function addClientFromModal() {
   // End date
   let endDate = (cfg.duration > 0)
     ? new Date(startDate.getTime() + cfg.duration * 86400000)
+    : isSingle ? startDate  // single: end = same day
     : null;
 
   // Format date helper (inline to avoid dependency order issues)
@@ -1154,6 +1160,8 @@ function addClientFromModal() {
     }
   }
 
+  const isSingle = dirKey === 'single_dance';
+
   const client = {
     id:           name + '§' + dirKey + '§' + Date.now(),
     name,
@@ -1164,9 +1172,10 @@ function addClientFromModal() {
     endDate:      fmt(endDate),
     totalLessons: cfg.total,
     lessonDates,
-    crossMonth:   endDate ? (startDate.getMonth() !== endDate.getMonth() ||
-                  startDate.getFullYear() !== endDate.getFullYear()) : false,
+    crossMonth:   false,
     isIndividual: isIndiv,
+    isSingle:     isSingle,
+    singleDate:   isSingle ? fmt(startDate) : '',
     duration:     cfg.duration,
     days:         cfg.days,
   };
