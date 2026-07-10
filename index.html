@@ -393,6 +393,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray);color:var(--
       <button class="dir-tab" data-dir="school1" onclick="setDirTab(this)">📚 Підгот. Молодша</button>
       <button class="dir-tab" data-dir="school2" onclick="setDirTab(this)">📚 Підгот. Старша</button>
       <button class="dir-tab" data-dir="logo" onclick="setDirTab(this)">🗣 Логопед</button>
+      <button class="dir-tab" data-dir="dance_single" onclick="setDirTab(this)">💃 Разове</button>
       <button class="btn btn-acc btn-sm" style="margin-left:auto" onclick="openAddModal()">+ Додати</button>
     </div>
 
@@ -450,6 +451,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray);color:var(--
             <option value="school2">📚 Підготовка до школи — Старша</option>
             <option value="logo">🗣 Логопед (індивідуально)</option>
             <option value="logo_sub">🗣 Логопед (абонемент)</option>
+            <option value="dance_single">💃 Танці — Разове заняття</option>
           </select>
         </div>
         <div id="mDateWrap">
@@ -1064,6 +1066,10 @@ function updateModalFields() {
   if (dir === 'logo') {
     dateWrap.style.display = 'none';
     info.innerHTML = '🗣 Індивідуальні заняття · ' + cfg.total + ' занять без дат · Просто 1, 2, 3...';
+  } else if (dir === 'dance_single') {
+    dateWrap.style.display = 'block';
+    document.querySelector('label[for="mDate"]') && (document.querySelector('label[for="mDate"]').textContent = 'ДАТА ЗАНЯТТЯ');
+    info.innerHTML = '💃 Разове заняття · Вказуй дату кожного разу · Враховується в зарплаті';
   } else {
     dateWrap.style.display = 'block';
     const dayNames = ['Нд','Пн','Вт','Ср','Чт','Пт','Сб'];
@@ -1108,8 +1114,13 @@ function addClientFromModal() {
 
   // Generate lesson dates
   let lessonDates = [];
+  const isSingle = dirKey === 'dance_single';
+
   if (isIndiv) {
     lessonDates = Array.from({length: cfg.total}, (_, i) => 'slot-' + i);
+  } else if (isSingle) {
+    // Single lesson — just one date
+    lessonDates = [isoD(startDate)];
   } else {
     // Generate dates by weekday
     const wds = cfg.days || [1,3];
@@ -1119,6 +1130,27 @@ function addClientFromModal() {
       if (wds.includes(dt.getDay())) lessonDates.push(isoD(dt));
       dt = new Date(dt.getTime() + 86400000);
       safety++;
+    }
+  }
+
+  // For dance_single: check if client already exists and just add a lesson
+  if (isSingle) {
+    const existing = clients.find(x => x.name === name && x.dirKey === 'dance_single');
+    if (existing) {
+      // Add new lesson date to existing client
+      const newDate = isoD(startDate);
+      if (!existing.lessonDates.includes(newDate)) {
+        existing.lessonDates.push(newDate);
+        existing.totalLessons = existing.lessonDates.length;
+        saveAll();
+        closeAddModal();
+        document.getElementById('mName').value = '';
+        renderAll();
+        toast('✅ Додано разове заняття ' + name + ' — ' + fmt(startDate), 'success');
+      } else {
+        toast('⚠️ Це заняття вже додано для ' + name, 'warn');
+      }
+      return;
     }
   }
 
@@ -1227,6 +1259,17 @@ function removeTransferDay(c, absentIdx) {
     attend[c.id]._transfers = transfers;
     localStorage.setItem('hp_clients', JSON.stringify(clients));
   }
+}
+
+function deleteClient(clientId) {
+  const c = clients.find(x=>x.id===clientId);
+  if (!c) return;
+  if (!confirm('Видалити абонемент ' + c.name + '?')) return;
+  clients = clients.filter(x=>x.id!==clientId);
+  delete attend[clientId];
+  saveAll();
+  renderAll();
+  toast('🗑 ' + c.name + ' видалено', 'success');
 }
 
 function uploadPhoto(clientId, input) {
@@ -1639,6 +1682,8 @@ function dirClass(dir) {
 }
 
 function buildCard(c) {
+  const groupTag = (c.groupName && c.groupName !== c.direction)
+    ? ` <span style="font-size:9px;background:#EDE9FE;color:#6D28D9;padding:1px 5px;border-radius:6px;font-weight:700">${c.groupName}</span>` : '';
   const present=getPresent(c);
   const remain=getRemain(c);
   const pct=Math.round(present/c.totalLessons*100);
@@ -1672,7 +1717,7 @@ function buildCard(c) {
   return `<div class="card ${cardCls}" id="cr-${CSS.escape(c.id)}">
   <div class="card-top">
     <div class="card-name">${c.name}</div>
-    <div class="dir-pill ${dirClass(c.direction)}">${c.direction}${groupTag}</div>
+    <div class="dir-pill ${dirClass(c.direction)}">${c.direction}</div>
   </div>
   <div class="card-dates">
     <span>📅 ${c.startDate}</span><span>→</span>
@@ -1699,6 +1744,8 @@ function buildCard(c) {
       <input type="file" accept="image/*" style="display:none" onchange="uploadPhoto('${esc(c.id)}',this)">
     </label>
     <button class="btn btn-acc btn-xs" onclick="markAll('${esc(c.id)}','present')">✓ Всі</button>
+    <button class="btn btn-xs" style="background:#FEE2E2;color:#991B1B;border:none" 
+      onclick="deleteClient('${esc(c.id)}')" title="Видалити абонемент">🗑</button>
   </div>
 </div>`;
 }
