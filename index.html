@@ -672,7 +672,9 @@ function showSalaryCard(encoded) {
   document.getElementById('pubView').style.display   = 'block';
   document.title = '💰 Зарплата — HappyZavr';
   try {
-    const data = JSON.parse(decodeURIComponent(atob(encoded)));
+    // Handle URL-safe base64
+    const base64 = encoded.replace(/-/g,'+').replace(/_/g,'/');
+    const data = JSON.parse(decodeURIComponent(escape(atob(base64))));
     const months = ['Січень','Лютий','Березень','Квітень','Травень','Червень',
                     'Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
     const [y,m] = data.month.split('-').map(Number);
@@ -1564,7 +1566,9 @@ function shareSalary(teacherId, monthStr) {
   };
   salData.grandTotal = salData.groups.reduce((s,g)=>s+g.total, 0);
 
-  const encoded = btoa(encodeURIComponent(JSON.stringify(salData)));
+  const jsonStr = JSON.stringify(salData);
+  const encoded = btoa(unescape(encodeURIComponent(jsonStr)))
+    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
   const url = 'https://igorzagorij5-dot.github.io/hepizavr/#salary=' + encoded;
   copyText(url);
   toast('🔗 Посилання скопійовано! Відправ викладачу.', 'success');
