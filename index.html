@@ -632,19 +632,35 @@ let syncing  = false;
 // INIT — check if public card view
 // ═══════════════════════════════════════════════════════
 window.onload = async function() {
-  const params = new URLSearchParams(window.location.search);
-  const cardId = params.get('card');
+  const hash = window.location.hash; // e.g. #card=XXX or #salary=XXX
 
-  if (cardId) {
-    // PUBLIC VIEW
+  if (hash.startsWith('#salary=')) {
+    const encoded = hash.slice(8);
+    document.getElementById('adminView').style.display = 'none';
+    document.getElementById('pubView').style.display   = 'block';
+    showSalaryCard(encoded);
+  } else if (hash.startsWith('#card=')) {
+    const cardId = hash.slice(6);
     document.getElementById('adminView').style.display = 'none';
     document.getElementById('pubView').style.display   = 'block';
     await loadPublicCard(cardId);
-    // Auto-refresh every 30s
     setInterval(() => loadPublicCard(cardId), 30000);
   } else {
-    // ADMIN VIEW
-    loadLocal();
+    // Also check query params for backwards compat
+    const params = new URLSearchParams(window.location.search);
+    const cardId = params.get('card');
+    const salaryId = params.get('salary');
+    if (salaryId) {
+      document.getElementById('adminView').style.display = 'none';
+      document.getElementById('pubView').style.display   = 'block';
+      showSalaryCard(salaryId);
+    } else if (cardId) {
+      document.getElementById('adminView').style.display = 'none';
+      document.getElementById('pubView').style.display   = 'block';
+      await loadPublicCard(cardId);
+    } else {
+      loadLocal();
+    }
   }
 };
 
@@ -720,10 +736,12 @@ async function loadPublicCard(cardId) {
     
     // Check if binId is passed as separate URL param
     const params = new URLSearchParams(window.location.search);
-    const urlBinId = params.get('bin');
+    // Extract binId from hash if present: #card=CARDKEY|BINID
+    const hashParts = (window.location.hash.slice(1)||'').split('|');
+    const hashBinId = hashParts.length > 1 ? hashParts[1] : null;
+    const urlBinId = new URLSearchParams(window.location.search).get('bin');
     
-    // Try to get binId from URL first, then localStorage (for local preview)
-    const binId = urlBinId || localStorage.getItem('hp_binId');
+    const binId = hashBinId || urlBinId || localStorage.getItem('hp_binId');
     const apiKey = localStorage.getItem('hp_apiKey') || '';
     
     let data = null;
@@ -1547,7 +1565,7 @@ function shareSalary(teacherId, monthStr) {
   salData.grandTotal = salData.groups.reduce((s,g)=>s+g.total, 0);
 
   const encoded = btoa(encodeURIComponent(JSON.stringify(salData)));
-  const url = 'https://igorzagorij5-dot.github.io/hepizavr/?salary=' + encoded;
+  const url = 'https://igorzagorij5-dot.github.io/hepizavr/#salary=' + encoded;
   copyText(url);
   toast('🔗 Посилання скопійовано! Відправ викладачу.', 'success');
 }
@@ -2047,7 +2065,7 @@ function renderCardLinks() {
     const st  = getStatus(c);
     const em  = st==='active'?'🟢':st==='ending'?'🟡':'🔴';
     const cardKey = encodeId(c.id);
-    const url = 'https://igorzagorij5-dot.github.io/hepizavr/?card=' + cardKey + (binId ? '&bin=' + binId : '');
+    const url = 'https://igorzagorij5-dot.github.io/hepizavr/#card=' + cardKey + (binId ? '|' + binId : '');
     return `<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;
       background:var(--gray);border-radius:10px;margin-bottom:8px">
       <div style="flex:1;min-width:0">
@@ -2069,7 +2087,7 @@ function openCard(id) {
   const binId = cfg.binId || localStorage.getItem('hp_binId');
   if (binId) {
     const cardKey = encodeId(c.id);
-    const url = 'https://igorzagorij5-dot.github.io/hepizavr/?card=' + cardKey + '&bin=' + binId;
+    const url = 'https://igorzagorij5-dot.github.io/hepizavr/#card=' + cardKey + '|' + binId;
     window.open(url, '_blank');
   } else {
     const win = window.open('', '_blank');
@@ -2097,7 +2115,7 @@ function copyCardLink(id) {
   if (binId) {
     // Include bin ID in URL so parents can load data without API key!
     const cardKey = encodeId(c.id);
-    const url = 'https://igorzagorij5-dot.github.io/hepizavr/?card=' + cardKey + '&bin=' + binId;
+    const url = 'https://igorzagorij5-dot.github.io/hepizavr/#card=' + cardKey + '|' + binId;
     copyText(url);
     toast('✅ Посилання скопійовано! Відправ батькам у Telegram.', 'success');
   } else {
