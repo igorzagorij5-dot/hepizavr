@@ -2266,7 +2266,7 @@ async function testGoogleSync() {
   showGoogleStatus('Перевіряємо...', 'info');
   try {
     const res = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/\${gCfg.sheetId}?fields=properties.title`,
+      `https://sheets.googleapis.com/v4/spreadsheets/${gCfg.sheetId}?fields=properties.title`,
       { headers: { Authorization: 'Bearer ' + gAccessToken } }
     );
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -2287,14 +2287,14 @@ async function addOrderToSheet(order) {
   // Check if headers exist, if not — add them
   try {
     const checkRes = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/\${gCfg.sheetId}/values/A1:O1`,
+      `https://sheets.googleapis.com/v4/spreadsheets/${gCfg.sheetId}/values/A1:O1`,
       { headers: { Authorization: 'Bearer ' + gAccessToken } }
     );
     const checkData = await checkRes.json();
     if (!checkData.values || !checkData.values.length) {
       // Add headers
       await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/\${gCfg.sheetId}/values/A1:O1?valueInputOption=RAW`,
+        `https://sheets.googleapis.com/v4/spreadsheets/${gCfg.sheetId}/values/A1:O1?valueInputOption=RAW`,
         {
           method: 'PUT',
           headers: { Authorization: 'Bearer ' + gAccessToken, 'Content-Type': 'application/json' },
@@ -2312,7 +2312,7 @@ async function addOrderToSheet(order) {
     ];
 
     await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/\${gCfg.sheetId}/values/A:O:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+      `https://sheets.googleapis.com/v4/spreadsheets/${gCfg.sheetId}/values/A:O:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
       {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + gAccessToken, 'Content-Type': 'application/json' },
@@ -2358,7 +2358,7 @@ async function addOrderToCalendar(order) {
 
   try {
     const res = await fetch(
-      `https://www.googleapis.com/calendar/v3/calendars/\${encodeURIComponent(calId)}/events`,
+      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calId)}/events`,
       {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + gAccessToken, 'Content-Type': 'application/json' },
