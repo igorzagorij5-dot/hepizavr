@@ -293,6 +293,38 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray);color:var(--
   background:rgba(255,255,255,.2);color:#fff;border-radius:8px;cursor:pointer;
   font-size:12px;font-weight:600;transition:background .15s}
 .sal-share-btn:hover{background:rgba(255,255,255,.35)}
+
+/* ── BOOKING ── */
+.bk-status-tab{padding:7px 14px;border:1.5px solid var(--border);border-radius:20px;
+  background:#fff;font-size:12px;font-weight:600;cursor:pointer;color:var(--text2);
+  transition:all .15s;white-space:nowrap}
+.bk-status-tab:hover{border-color:#f472b6;color:#9333EA}
+.bk-status-tab.active{background:linear-gradient(135deg,#f472b6,#c084fc);
+  color:#fff;border-color:transparent;box-shadow:0 3px 10px rgba(192,132,252,.4)}
+.bk-label{display:block;font-size:11px;font-weight:700;color:var(--text2);
+  text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.bk-input{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;
+  font-size:13px;background:#fff;outline:none;transition:border .15s;font-family:inherit}
+.bk-input:focus{border-color:#c084fc}
+.bk-card{background:#fff;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,.08);
+  overflow:hidden;margin-bottom:12px;border-left:4px solid transparent;transition:box-shadow .2s}
+.bk-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.12)}
+.bk-card.new{border-left-color:#60A5FA}
+.bk-card.confirmed{border-left-color:#34D399}
+.bk-card.prepaid{border-left-color:#FBBF24}
+.bk-card.done{border-left-color:#A78BFA}
+.bk-card.closed{border-left-color:#9CA3AF;opacity:.75}
+.bk-card-hdr{padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.bk-name{font-size:15px;font-weight:800;color:var(--navy)}
+.bk-status-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px}
+.bk-card-body{padding:0 16px 12px;display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.bk-field{font-size:12px;color:var(--text2)}
+.bk-field strong{color:var(--text);font-weight:700}
+.bk-card-foot{padding:8px 12px 12px;border-top:1px solid var(--gray2);
+  display:flex;gap:6px;flex-wrap:wrap}
+.bk-reminder{background:linear-gradient(135deg,#FEF3C7,#FDE68A);border-radius:12px;
+  padding:12px 16px;margin-bottom:12px;border-left:4px solid #F59E0B;
+  display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;color:#78350F}
 </style>
 </head>
 <body>
@@ -557,6 +589,60 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray);color:var(--
       </p>
       <button class="btn btn-out btn-sm" onclick="exportJSON()" style="margin-top:10px">📥 Завантажити дані (JSON)</button>
     </div>
+
+    <!-- GOOGLE INTEGRATION -->
+    <div class="setup-panel" style="border-left-color:#4285F4">
+      <h3>🔵 Google інтеграція (Таблиця + Календар)</h3>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.6">
+        Нові замовлення автоматично потраплятимуть у Google Таблицю (база клієнтів)
+        і Google Календар (нагадування). Потребує одноразового налаштування.
+      </p>
+
+      <div class="setup-row" style="margin-bottom:10px">
+        <div class="setup-field">
+          <label>Google Sheets ID (з URL таблиці)</label>
+          <input type="text" id="gSheetId" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms"
+            oninput="saveGoogleCfg()" style="font-size:12px">
+        </div>
+      </div>
+      <div class="setup-row" style="margin-bottom:10px">
+        <div class="setup-field">
+          <label>Google Calendar ID</label>
+          <input type="text" id="gCalId" placeholder="primary або your@gmail.com"
+            oninput="saveGoogleCfg()">
+        </div>
+      </div>
+      <div class="setup-row" style="margin-bottom:10px">
+        <div class="setup-field">
+          <label>Google API Key</label>
+          <input type="password" id="gApiKey" placeholder="AIzaSy..."
+            oninput="saveGoogleCfg()">
+        </div>
+        <div class="setup-field">
+          <label>OAuth Client ID</label>
+          <input type="text" id="gClientId" placeholder="xxxx.apps.googleusercontent.com"
+            oninput="saveGoogleCfg()">
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <button class="btn btn-acc" onclick="googleSignIn()">🔐 Авторизуватись в Google</button>
+        <button class="btn btn-out" onclick="testGoogleSync()">🧪 Перевірити з'єднання</button>
+        <button class="btn btn-grn" onclick="syncAllOrdersToGoogle()">📤 Синхронізувати всі замовлення</button>
+      </div>
+
+      <div id="googleStatus" class="setup-status ss-info" style="display:none"></div>
+
+      <div style="background:#F0F4FF;border-radius:10px;padding:12px;margin-top:10px;font-size:12px;color:#3730A3;line-height:1.8">
+        <b>📋 Як налаштувати (5 хвилин):</b><br>
+        1. Відкрий <b>console.cloud.google.com</b> → створи проект<br>
+        2. Увімкни <b>Google Sheets API</b> і <b>Google Calendar API</b><br>
+        3. Створи <b>API Key</b> → скопіюй сюди<br>
+        4. Створи <b>OAuth 2.0 Client ID</b> (тип: Web) → додай <code>https://igorzagorij5-dot.github.io</code> як дозволений origin<br>
+        5. Створи Google Таблицю → скопіюй ID з URL (між /d/ і /edit)<br>
+        6. Натисни <b>Авторизуватись</b> → дай дозвіл → готово!
+      </div>
+    </div>
   </div>
   <!-- SALARY PAGE -->
   <div class="page" id="pg-salary">
@@ -569,6 +655,22 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray);color:var(--
       <span style="font-size:13px;color:var(--text2)">Оберіть місяць для розрахунку</span>
     </div>
 
+    <!-- RATES EDITOR -->
+    <div id="ratesEditorWrap" style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <span style="font-size:13px;font-weight:700;color:var(--text2)">⚙️ СТАВКИ ВИКЛАДАЧІВ</span>
+        <button class="btn btn-out btn-sm" onclick="toggleRatesEditor()">✏️ Змінити ставки</button>
+      </div>
+      <div id="ratesEditor" style="display:none;background:#fff;border-radius:14px;padding:18px;
+        box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:16px">
+        <div id="ratesFields" style="display:flex;flex-direction:column;gap:12px"></div>
+        <div style="display:flex;gap:8px;margin-top:14px">
+          <button class="btn btn-grn" onclick="saveRates()">💾 Зберегти ставки</button>
+          <button class="btn btn-out" onclick="resetRates()">↩️ Скинути до базових</button>
+        </div>
+      </div>
+    </div>
+
     <!-- TEACHER CARDS -->
     <div style="display:flex;flex-direction:column;gap:16px" id="salaryCards"></div>
 
@@ -576,11 +678,115 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray);color:var(--
 
   <!-- BOOKING PAGE -->
   <div class="page" id="pg-booking">
-    <div class="coming-soon">
-      <div class="cs-icon">🎉</div>
-      <h2>Бронювання замовлень</h2>
-      <p>Замовлення свят з Google форми,<br>вигрузка в Google Calendar</p>
-      <div class="cs-badge">🚧 В розробці</div>
+
+    <!-- HEADER ROW -->
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;flex:1">
+        <button class="bk-status-tab active" data-status="all" onclick="setBkTab(this)">🗂 Всі</button>
+        <button class="bk-status-tab" data-status="new" onclick="setBkTab(this)">🆕 Нові</button>
+        <button class="bk-status-tab" data-status="confirmed" onclick="setBkTab(this)">✅ Підтверджені</button>
+        <button class="bk-status-tab" data-status="prepaid" onclick="setBkTab(this)">💰 Передоплата</button>
+        <button class="bk-status-tab" data-status="done" onclick="setBkTab(this)">🎉 Проведені</button>
+        <button class="bk-status-tab" data-status="closed" onclick="setBkTab(this)">🔒 Закриті</button>
+      </div>
+      <button class="btn btn-acc" onclick="openBkModal()">+ Нове замовлення</button>
+    </div>
+
+    <!-- REMINDERS -->
+    <div id="bkReminders"></div>
+
+    <!-- STATS -->
+    <div class="stats" id="bkStats" style="margin-bottom:16px"></div>
+
+    <!-- ORDERS LIST -->
+    <div id="bkList"></div>
+
+  </div>
+
+  <!-- BOOKING MODAL -->
+  <div id="bkModal" style="display:none;position:fixed;inset:0;z-index:500;
+    background:rgba(0,0,0,.5);align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto">
+    <div style="background:#fff;border-radius:20px;width:100%;max-width:520px;
+      margin:20px auto;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden">
+      <div style="background:linear-gradient(135deg,#f472b6,#c084fc);padding:18px 22px;
+        color:#fff;display:flex;align-items:center;justify-content:space-between">
+        <h3 style="font-size:16px;font-weight:800" id="bkModalTitle">🎉 Нове замовлення</h3>
+        <button onclick="closeBkModal()" style="background:rgba(255,255,255,.2);border:none;
+          color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:16px">✕</button>
+      </div>
+      <div style="padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:12px" id="bkModalFields">
+        <div style="grid-column:1/-1">
+          <label class="bk-label">ІМ'Я ЗАМОВНИКА</label>
+          <input class="bk-input" id="bkName" type="text" placeholder="Іванова Оксана">
+        </div>
+        <div>
+          <label class="bk-label">ТЕЛЕФОН</label>
+          <input class="bk-input" id="bkPhone" type="tel" placeholder="+380...">
+        </div>
+        <div>
+          <label class="bk-label">ДАТА СВЯТА</label>
+          <input class="bk-input" id="bkDate" type="date">
+        </div>
+        <div>
+          <label class="bk-label">ЧАС ПОЧАТКУ</label>
+          <input class="bk-input" id="bkTime" type="time" value="12:00">
+        </div>
+        <div>
+          <label class="bk-label">ВІК ДИТИНИ</label>
+          <input class="bk-input" id="bkAge" type="text" placeholder="5 років">
+        </div>
+        <div>
+          <label class="bk-label">К-СТЬ ГОСТЕЙ</label>
+          <input class="bk-input" id="bkGuests" type="number" placeholder="10" min="1">
+        </div>
+        <div>
+          <label class="bk-label">АНІМАТОР</label>
+          <input class="bk-input" id="bkAnimator" type="text" placeholder="Ліля">
+        </div>
+        <div>
+          <label class="bk-label">ПРОГРАМА</label>
+          <input class="bk-input" id="bkProgram" type="text" placeholder="Динозаври, квест...">
+        </div>
+        <div>
+          <label class="bk-label">ЦІНА (₴)</label>
+          <input class="bk-input" id="bkPrice" type="number" placeholder="3500" min="0">
+        </div>
+        <div>
+          <label class="bk-label">ПЕРЕДОПЛАТА (₴)</label>
+          <input class="bk-input" id="bkPrepay" type="number" placeholder="500" min="0">
+        </div>
+        <div>
+          <label class="bk-label">СТАТУС</label>
+          <select class="bk-input" id="bkStatus">
+            <option value="new">🆕 Нове</option>
+            <option value="confirmed">✅ Підтверджено</option>
+            <option value="prepaid">💰 Передоплата отримана</option>
+            <option value="done">🎉 Проведено</option>
+            <option value="closed">🔒 Закрито</option>
+          </select>
+        </div>
+        <div>
+          <label class="bk-label">ДЖЕРЕЛО</label>
+          <select class="bk-input" id="bkSource">
+            <option value="manual">✍️ Вручну</option>
+            <option value="instagram">📸 Instagram</option>
+            <option value="telegram">✈️ Telegram</option>
+            <option value="phone">📞 Телефон</option>
+            <option value="repeat">🔄 Повторний клієнт</option>
+          </select>
+        </div>
+        <div style="grid-column:1/-1">
+          <label class="bk-label">ПРИМІТКИ</label>
+          <textarea class="bk-input" id="bkNotes" rows="2" placeholder="Улюблений герой, алергія..."></textarea>
+        </div>
+      </div>
+      <div style="padding:0 20px 20px">
+        <button onclick="saveBkOrder()" style="width:100%;padding:13px;
+          background:linear-gradient(135deg,#f472b6,#c084fc);color:#fff;border:none;
+          border-radius:12px;font-size:15px;font-weight:800;cursor:pointer">
+          💾 Зберегти замовлення
+        </button>
+      </div>
     </div>
   </div>
 
@@ -672,9 +878,13 @@ function showSalaryCard(encoded) {
   document.getElementById('pubView').style.display   = 'block';
   document.title = '💰 Зарплата — HappyZavr';
   try {
-    // Handle URL-safe base64
+    // Decode URL-safe base64 with Cyrillic support
     const base64 = encoded.replace(/-/g,'+').replace(/_/g,'/');
-    const data = JSON.parse(decodeURIComponent(escape(atob(base64))));
+    const pad = base64.length % 4 ? '='.repeat(4 - base64.length % 4) : '';
+    const binary = atob(base64 + pad);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const data = JSON.parse(new TextDecoder('utf-8').decode(bytes));
     const months = ['Січень','Лютий','Березень','Квітень','Травень','Червень',
                     'Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
     const [y,m] = data.month.split('-').map(Number);
@@ -1028,7 +1238,7 @@ async function initCloud() {
   showSetupStatus('Створюємо сховище...', 'info');
 
   try {
-    const payload = { clients, attend, updatedAt: new Date().toISOString() };
+    const payload = { clients, attend, orders, updatedAt: new Date().toISOString() };
     const res = await fetch('https://api.jsonbin.io/v3/b', {
       method: 'POST',
       headers: {
@@ -1087,7 +1297,7 @@ async function pushCloud() {
   syncing = true;
   setSyncStatus('spin', 'Синхронізація...');
   try {
-    const payload = { clients, attend, updatedAt: new Date().toISOString() };
+    const payload = { clients, attend, orders, updatedAt: new Date().toISOString() };
     const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
       method: 'PUT',
       headers: {
@@ -1125,6 +1335,8 @@ function showSetupStatus(msg, type) {
 // LOCAL STORAGE
 // ═══════════════════════════════════════════════════════
 function loadLocal() {
+  loadOrders();
+  loadGoogleCfg();
   try {
     const c = localStorage.getItem('hp_clients');
     const a = localStorage.getItem('hp_attend');
@@ -1376,8 +1588,8 @@ function deleteClient(clientId) {
 // SALARY CALCULATION
 // ═══════════════════════════════════════════════════════
 
-// Teacher config
-const TEACHERS = [
+// Teacher config — DEFAULT rates (editable in UI)
+const TEACHERS_DEFAULT = [
   {
     id: 'lily',
     name: 'Ліля',
@@ -1396,8 +1608,8 @@ const TEACHERS = [
     color: '#059669',
     color2: '#10B981',
     groups: [
-      { dirKey: 'school1', label: 'Молодша група',  rateBelow5: 450, rate5plus: 450 },
-      { dirKey: 'school2', label: 'Старша група',   rateBelow5: 650, rate5plus: 650 },
+      { dirKey: 'school1', label: 'Молодша група', rateBelow5: 450, rate5plus: 450 },
+      { dirKey: 'school2', label: 'Старша група',  rateBelow5: 650, rate5plus: 650 },
     ]
   },
   {
@@ -1412,6 +1624,37 @@ const TEACHERS = [
     ]
   },
 ];
+
+// Load rates from localStorage (user can override)
+function loadTeacherRates() {
+  try {
+    const saved = localStorage.getItem('hp_teacher_rates');
+    if (!saved) return JSON.parse(JSON.stringify(TEACHERS_DEFAULT));
+    const rates = JSON.parse(saved);
+    // Merge saved rates into default structure
+    return TEACHERS_DEFAULT.map(t => ({
+      ...t,
+      groups: t.groups.map(g => ({
+        ...g,
+        ...(rates[t.id] && rates[t.id][g.dirKey] ? rates[t.id][g.dirKey] : {})
+      }))
+    }));
+  } catch(e) { return JSON.parse(JSON.stringify(TEACHERS_DEFAULT)); }
+}
+
+function saveTeacherRates(teachers) {
+  const rates = {};
+  teachers.forEach(t => {
+    rates[t.id] = {};
+    t.groups.forEach(g => {
+      rates[t.id][g.dirKey] = { rateBelow5: g.rateBelow5, rate5plus: g.rate5plus };
+    });
+  });
+  localStorage.setItem('hp_teacher_rates', JSON.stringify(rates));
+  if (cfg.apiKey && cfg.binId) pushCloud();
+}
+
+let TEACHERS = loadTeacherRates();
 
 function initSalaryMonths() {
   const sel = document.getElementById('salMonth');
@@ -1430,6 +1673,89 @@ function initSalaryMonths() {
     if (i === 0) opt.selected = true;
     sel.appendChild(opt);
   }
+}
+
+function toggleRatesEditor() {
+  const ed = document.getElementById('ratesEditor');
+  const isOpen = ed.style.display !== 'none';
+  if (!isOpen) {
+    renderRatesFields();
+    ed.style.display = 'block';
+  } else {
+    ed.style.display = 'none';
+  }
+}
+
+function renderRatesFields() {
+  const fields = document.getElementById('ratesFields');
+  fields.innerHTML = TEACHERS.map(t => `
+    <div style="background:${t.color}10;border-radius:10px;padding:12px 14px;border-left:3px solid ${t.color}">
+      <div style="font-size:13px;font-weight:800;color:${t.color};margin-bottom:10px">
+        👤 ${t.name} — ${t.role}
+      </div>
+      ${t.groups.map(g => `
+        <div style="margin-bottom:8px">
+          <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:5px">${g.label}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            ${g.rateBelow5 === g.rate5plus ? `
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px">
+                Ставка за заняття:
+                <input type="number" value="${g.rateBelow5}" min="0" step="50"
+                  data-teacher="${t.id}" data-dirkey="${g.dirKey}" data-field="both"
+                  style="width:80px;padding:4px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-weight:700">
+                ₴
+              </label>
+            ` : `
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px">
+                До 5 дітей:
+                <input type="number" value="${g.rateBelow5}" min="0" step="50"
+                  data-teacher="${t.id}" data-dirkey="${g.dirKey}" data-field="rateBelow5"
+                  style="width:75px;padding:4px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-weight:700">
+                ₴
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px">
+                5+ дітей:
+                <input type="number" value="${g.rate5plus}" min="0" step="50"
+                  data-teacher="${t.id}" data-dirkey="${g.dirKey}" data-field="rate5plus"
+                  style="width:75px;padding:4px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-weight:700">
+                ₴
+              </label>
+            `}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+}
+
+function saveRates() {
+  // Read all inputs and update TEACHERS
+  document.querySelectorAll('#ratesFields input[data-teacher]').forEach(inp => {
+    const tid    = inp.dataset.teacher;
+    const dirKey = inp.dataset.dirkey;
+    const field  = inp.dataset.field;
+    const val    = parseInt(inp.value) || 0;
+    const teacher = TEACHERS.find(t=>t.id===tid);
+    if (!teacher) return;
+    const group = teacher.groups.find(g=>g.dirKey===dirKey);
+    if (!group) return;
+    if (field === 'both') { group.rateBelow5 = val; group.rate5plus = val; }
+    else if (field === 'rateBelow5') group.rateBelow5 = val;
+    else if (field === 'rate5plus')  group.rate5plus  = val;
+  });
+  saveTeacherRates(TEACHERS);
+  document.getElementById('ratesEditor').style.display = 'none';
+  renderSalary();
+  toast('✅ Ставки збережено!', 'success');
+}
+
+function resetRates() {
+  if (!confirm('Скинути всі ставки до базових значень?')) return;
+  localStorage.removeItem('hp_teacher_rates');
+  TEACHERS = loadTeacherRates();
+  renderRatesFields();
+  renderSalary();
+  toast('↩️ Ставки скинуто до базових', 'success');
 }
 
 function renderSalary() {
@@ -1567,13 +1893,498 @@ function shareSalary(teacherId, monthStr) {
   salData.grandTotal = salData.groups.reduce((s,g)=>s+g.total, 0);
 
   const jsonStr = JSON.stringify(salData);
-  const encoded = btoa(unescape(encodeURIComponent(jsonStr)))
-    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+  // Encode with TextEncoder for proper UTF-8 support
+  const bytes = new TextEncoder().encode(jsonStr);
+  let binary = '';
+  bytes.forEach(b => binary += String.fromCharCode(b));
+  const encoded = btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
   const url = 'https://igorzagorij5-dot.github.io/hepizavr/#salary=' + encoded;
   copyText(url);
   toast('🔗 Посилання скопійовано! Відправ викладачу.', 'success');
 }
 
+
+
+// ═══════════════════════════════════════════════════════
+// BOOKING / ORDERS CRM
+// ═══════════════════════════════════════════════════════
+let orders = [];
+let currentBkFilter = 'all';
+let editingOrderId = null;
+
+const ORDER_STATUSES = {
+  new:       { label: '🆕 Нове',               bg: '#DBEAFE', color: '#1E40AF' },
+  confirmed: { label: '✅ Підтверджено',        bg: '#D1FAE5', color: '#065F46' },
+  prepaid:   { label: '💰 Передоплата',         bg: '#FEF3C7', color: '#78350F' },
+  done:      { label: '🎉 Проведено',           bg: '#EDE9FE', color: '#4C1D95' },
+  closed:    { label: '🔒 Закрито',             bg: '#F3F4F6', color: '#6B7280' },
+};
+
+function loadOrders() {
+  try {
+    const saved = localStorage.getItem('hp_orders');
+    if (saved) orders = JSON.parse(saved);
+  } catch(e) { orders = []; }
+  autoUpdateOrderStatuses();
+}
+
+function autoUpdateOrderStatuses() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const tomorrow = new Date(today.getTime() + 86400000);
+  let changed = false;
+
+  orders.forEach(o => {
+    if (!o.date) return;
+    // Skip already closed or manually set
+    if (o.status === 'closed') return;
+
+    const eventDate = new Date(o.date); eventDate.setHours(0,0,0,0);
+
+    // Day of event → mark as done (only if was confirmed or prepaid)
+    if (eventDate.getTime() === today.getTime()) {
+      if (o.status === 'confirmed' || o.status === 'prepaid') {
+        o.status = 'done';
+        o.autoUpdated = true;
+        changed = true;
+      }
+    }
+
+    // Day after event → mark as closed
+    if (eventDate.getTime() < today.getTime()) {
+      if (o.status === 'done') {
+        o.status = 'closed';
+        o.autoUpdated = true;
+        changed = true;
+      }
+    }
+  });
+
+  if (changed) {
+    localStorage.setItem('hp_orders', JSON.stringify(orders));
+    // Push to cloud silently
+    if (cfg.apiKey && cfg.binId) pushCloud();
+  }
+}
+
+function saveOrders(newOrder) {
+  localStorage.setItem('hp_orders', JSON.stringify(orders));
+  if (cfg.apiKey && cfg.binId) pushCloud();
+  // Auto-sync new order to Google
+  if (newOrder) {
+    gAccessToken = gAccessToken || localStorage.getItem('hp_g_token');
+    if (gAccessToken && gCfg.sheetId) addOrderToSheet(newOrder);
+    if (gAccessToken && newOrder.date) addOrderToCalendar(newOrder);
+  }
+}
+
+function setBkTab(el) {
+  document.querySelectorAll('.bk-status-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  currentBkFilter = el.dataset.status;
+  renderBooking();
+}
+
+function openBkModal(orderId) {
+  editingOrderId = orderId || null;
+  const modal = document.getElementById('bkModal');
+  modal.style.display = 'flex';
+  document.getElementById('bkModalTitle').textContent = orderId ? '✏️ Редагувати замовлення' : '🎉 Нове замовлення';
+
+  if (orderId) {
+    const o = orders.find(x=>x.id===orderId);
+    if (!o) return;
+    document.getElementById('bkName').value     = o.name||'';
+    document.getElementById('bkPhone').value    = o.phone||'';
+    document.getElementById('bkDate').value     = o.date||'';
+    document.getElementById('bkTime').value     = o.time||'12:00';
+    document.getElementById('bkAge').value      = o.age||'';
+    document.getElementById('bkGuests').value   = o.guests||'';
+    document.getElementById('bkAnimator').value = o.animator||'';
+    document.getElementById('bkProgram').value  = o.program||'';
+    document.getElementById('bkPrice').value    = o.price||'';
+    document.getElementById('bkPrepay').value   = o.prepay||'';
+    document.getElementById('bkStatus').value   = o.status||'new';
+    document.getElementById('bkSource').value   = o.source||'manual';
+    document.getElementById('bkNotes').value    = o.notes||'';
+  } else {
+    // Clear form
+    ['bkName','bkPhone','bkAge','bkGuests','bkAnimator','bkProgram','bkPrice','bkPrepay','bkNotes'].forEach(id=>{
+      document.getElementById(id).value='';
+    });
+    document.getElementById('bkDate').value   = '';
+    document.getElementById('bkTime').value   = '12:00';
+    document.getElementById('bkStatus').value = 'new';
+    document.getElementById('bkSource').value = 'manual';
+  }
+}
+
+function closeBkModal() {
+  document.getElementById('bkModal').style.display = 'none';
+  editingOrderId = null;
+}
+
+function saveBkOrder() {
+  const name = document.getElementById('bkName').value.trim();
+  if (!name) { toast('⚠️ Введи імя замовника','warn'); return; }
+
+  const order = {
+    id:        editingOrderId || 'ord_' + Date.now(),
+    name,
+    phone:     document.getElementById('bkPhone').value.trim(),
+    date:      document.getElementById('bkDate').value,
+    time:      document.getElementById('bkTime').value,
+    age:       document.getElementById('bkAge').value.trim(),
+    guests:    document.getElementById('bkGuests').value,
+    animator:  document.getElementById('bkAnimator').value.trim(),
+    program:   document.getElementById('bkProgram').value.trim(),
+    price:     parseInt(document.getElementById('bkPrice').value)||0,
+    prepay:    parseInt(document.getElementById('bkPrepay').value)||0,
+    status:    document.getElementById('bkStatus').value,
+    source:    document.getElementById('bkSource').value,
+    notes:     document.getElementById('bkNotes').value.trim(),
+    createdAt: editingOrderId ? (orders.find(x=>x.id===editingOrderId)||{}).createdAt : new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (editingOrderId) {
+    const idx = orders.findIndex(x=>x.id===editingOrderId);
+    if (idx>=0) orders[idx] = order;
+    saveOrders(); // no Google sync on edit
+  } else {
+    orders.unshift(order);
+    saveOrders(order); // pass new order for Google sync
+  }
+  closeBkModal();
+  renderBooking();
+  toast(editingOrderId ? '✅ Оновлено' : '✅ Замовлення додано!', 'success');
+}
+
+function deleteBkOrder(id) {
+  const o = orders.find(x=>x.id===id);
+  if (!o) return;
+  if (!confirm('Видалити замовлення ' + o.name + '?')) return;
+  orders = orders.filter(x=>x.id!==id);
+  saveOrders();
+  renderBooking();
+  toast('🗑 Замовлення видалено','success');
+}
+
+function changeBkStatus(id, status) {
+  const o = orders.find(x=>x.id===id);
+  if (!o) return;
+  o.status = status;
+  o.updatedAt = new Date().toISOString();
+  saveOrders();
+  renderBooking();
+  toast('✅ Статус оновлено','success');
+}
+
+function renderBooking() {
+  loadOrders();
+  renderBkReminders();
+  renderBkStats();
+  renderBkList();
+}
+
+function renderBkReminders() {
+  const el = document.getElementById('bkReminders');
+  if (!el) return;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const in3   = new Date(today.getTime() + 3*86400000);
+
+  const upcoming = orders.filter(o => {
+    if (o.status === 'closed' || o.status === 'done') return false;
+    if (!o.date) return false;
+    const d = new Date(o.date); d.setHours(0,0,0,0);
+    return d >= today && d <= in3;
+  });
+
+  if (!upcoming.length) { el.innerHTML = ''; return; }
+
+  el.innerHTML = upcoming.map(o => {
+    const d = new Date(o.date);
+    const diff = Math.round((d-today)/86400000);
+    const diffTxt = diff===0?'СЬОГОДНІ!':diff===1?'ЗАВТРА':'через '+diff+' дні';
+    return `<div class="bk-reminder">
+      🔔 <span><b>${o.name}</b> — свято <b>${diffTxt}</b>
+      (${d.toLocaleDateString('uk-UA')}, ${o.time||''}, ${o.guests||'?'} гостей)</span>
+      <button class="btn btn-xs" style="margin-left:auto;background:#F59E0B;color:#fff;border:none"
+        onclick="openBkModal('${o.id}')">Відкрити</button>
+    </div>`;
+  }).join('');
+}
+
+function renderBkStats() {
+  const el = document.getElementById('bkStats');
+  if (!el) return;
+  const total   = orders.length;
+  const active  = orders.filter(o=>o.status!=='closed').length;
+  const income  = orders.filter(o=>o.status==='done').reduce((s,o)=>s+o.price,0);
+  const prepays = orders.filter(o=>['prepaid','done'].includes(o.status)).reduce((s,o)=>s+o.prepay,0);
+  el.innerHTML = `
+    <div class="stat"><div class="v" style="color:var(--acc)">${total}</div><div class="l">Всього замовлень</div></div>
+    <div class="stat"><div class="v" style="color:var(--grn)">${active}</div><div class="l">Активних</div></div>
+    <div class="stat"><div class="v" style="color:#7C3AED;font-size:18px">${income.toLocaleString('uk')}₴</div><div class="l">Дохід (проведені)</div></div>
+    <div class="stat"><div class="v" style="color:var(--yel);font-size:18px">${prepays.toLocaleString('uk')}₴</div><div class="l">Передоплат</div></div>
+  `;
+}
+
+function renderBkList() {
+  const el = document.getElementById('bkList');
+  if (!el) return;
+
+  const filtered = currentBkFilter==='all'
+    ? orders
+    : orders.filter(o=>o.status===currentBkFilter);
+
+  if (!filtered.length) {
+    el.innerHTML = `<div class="empty"><div class="eico">🎉</div>
+      <h3>${currentBkFilter==='all'?'Ще немає замовлень':'Замовлень немає'}</h3>
+      <p>Натисни «+ Нове замовлення» щоб додати</p></div>`;
+    return;
+  }
+
+  // Sort by date
+  const sorted = [...filtered].sort((a,b)=>(a.date||'')>(b.date||'')?1:-1);
+
+  el.innerHTML = sorted.map(o => {
+    const st = ORDER_STATUSES[o.status] || ORDER_STATUSES.new;
+    const remain = o.price - o.prepay;
+    const fmtDate = o.date ? new Date(o.date).toLocaleDateString('uk-UA') : '—';
+
+    const statusOptions = Object.entries(ORDER_STATUSES).map(([k,v])=>
+      `<option value="${k}" ${k===o.status?'selected':''}>${v.label}</option>`
+    ).join('');
+
+    return `<div class="bk-card ${o.status}">
+      <div class="bk-card-hdr">
+        <div>
+          <div class="bk-name">${o.name}</div>
+          <div style="font-size:12px;color:var(--text2)">${o.phone||''}</div>
+        </div>
+        <span class="bk-status-badge" style="background:${st.bg};color:${st.color}">${st.label}</span>
+      </div>
+      <div class="bk-card-body">
+        <div class="bk-field">📅 <strong>${fmtDate}</strong> ${o.time?'о '+o.time:''}</div>
+        <div class="bk-field">👥 Гостей: <strong>${o.guests||'—'}</strong></div>
+        <div class="bk-field">🎂 Вік: <strong>${o.age||'—'}</strong></div>
+        <div class="bk-field">🎭 Аніматор: <strong>${o.animator||'—'}</strong></div>
+        <div class="bk-field">🎪 Програма: <strong>${o.program||'—'}</strong></div>
+        <div class="bk-field">📸 Джерело: <strong>${o.source||'—'}</strong></div>
+        <div class="bk-field">💰 Ціна: <strong>${o.price?o.price.toLocaleString('uk')+'₴':'—'}</strong></div>
+        <div class="bk-field">💳 Передоплата: <strong style="color:${o.prepay?'var(--grn)':'var(--red)'}">${o.prepay?o.prepay.toLocaleString('uk')+'₴':'Немає'}</strong></div>
+        ${remain>0?`<div class="bk-field" style="grid-column:1/-1">💵 До доплати: <strong style="color:var(--red)">${remain.toLocaleString('uk')}₴</strong></div>`:''}
+        ${o.notes?`<div class="bk-field" style="grid-column:1/-1">📝 <em>${o.notes}</em></div>`:''}
+      </div>
+      <div class="bk-card-foot">
+        <select class="btn btn-xs btn-out" onchange="changeBkStatus('${o.id}',this.value)"
+          style="border:1.5px solid var(--border);padding:4px 8px;border-radius:6px;font-size:11px;cursor:pointer">
+          ${statusOptions}
+        </select>
+        <button class="btn btn-acc btn-xs" onclick="openBkModal('${o.id}')">✏️ Редагувати</button>
+        <button class="btn btn-xs" style="background:#FEE2E2;color:#991B1B;border:none"
+          onclick="deleteBkOrder('${o.id}')">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+
+// ═══════════════════════════════════════════════════════
+// GOOGLE INTEGRATION
+// ═══════════════════════════════════════════════════════
+let gCfg = { sheetId:'', calId:'primary', apiKey:'', clientId:'' };
+let gTokenClient = null;
+let gAccessToken = null;
+
+function loadGoogleCfg() {
+  try {
+    const saved = localStorage.getItem('hp_google_cfg');
+    if (saved) {
+      gCfg = {...gCfg, ...JSON.parse(saved)};
+      const el = id => document.getElementById(id);
+      if (el('gSheetId'))  el('gSheetId').value  = gCfg.sheetId  || '';
+      if (el('gCalId'))    el('gCalId').value    = gCfg.calId    || 'primary';
+      if (el('gApiKey'))   el('gApiKey').value   = gCfg.apiKey   || '';
+      if (el('gClientId')) el('gClientId').value = gCfg.clientId || '';
+    }
+  } catch(e){}
+}
+
+function saveGoogleCfg() {
+  gCfg.sheetId  = (document.getElementById('gSheetId')  || {value:''}).value.trim();
+  gCfg.calId    = (document.getElementById('gCalId')    || {value:'primary'}).value.trim() || 'primary';
+  gCfg.apiKey   = (document.getElementById('gApiKey')   || {value:''}).value.trim();
+  gCfg.clientId = (document.getElementById('gClientId') || {value:''}).value.trim();
+  localStorage.setItem('hp_google_cfg', JSON.stringify(gCfg));
+}
+
+function showGoogleStatus(msg, type) {
+  const el = document.getElementById('googleStatus');
+  if (!el) return;
+  el.style.display = 'block';
+  el.className = 'setup-status ss-' + type;
+  el.textContent = msg;
+}
+
+function googleSignIn() {
+  saveGoogleCfg();
+  if (!gCfg.clientId) { showGoogleStatus('Введи OAuth Client ID', 'err'); return; }
+
+  // Load Google Identity Services
+  if (!window.google || !window.google.accounts) {
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.onload = () => initGoogleAuth();
+    document.head.appendChild(script);
+  } else {
+    initGoogleAuth();
+  }
+}
+
+function initGoogleAuth() {
+  gTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: gCfg.clientId,
+    scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/calendar.events',
+    callback: (resp) => {
+      if (resp.error) { showGoogleStatus('Помилка авторизації: ' + resp.error, 'err'); return; }
+      gAccessToken = resp.access_token;
+      localStorage.setItem('hp_g_token', gAccessToken);
+      showGoogleStatus('✅ Авторизовано! Тепер можеш синхронізувати.', 'ok');
+      toast('✅ Google авторизовано!', 'success');
+    }
+  });
+  gTokenClient.requestAccessToken();
+}
+
+async function testGoogleSync() {
+  saveGoogleCfg();
+  gAccessToken = gAccessToken || localStorage.getItem('hp_g_token');
+  if (!gAccessToken) { showGoogleStatus('Спочатку авторизуйся в Google', 'err'); return; }
+  if (!gCfg.sheetId) { showGoogleStatus('Введи Google Sheets ID', 'err'); return; }
+
+  showGoogleStatus('Перевіряємо...', 'info');
+  try {
+    const res = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/\${gCfg.sheetId}?fields=properties.title`,
+      { headers: { Authorization: 'Bearer ' + gAccessToken } }
+    );
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    showGoogleStatus('✅ Таблиця знайдена: ' + data.properties.title, 'ok');
+  } catch(e) {
+    showGoogleStatus('Помилка: ' + e.message + '. Перевір налаштування.', 'err');
+  }
+}
+
+async function addOrderToSheet(order) {
+  saveGoogleCfg();
+  gAccessToken = gAccessToken || localStorage.getItem('hp_g_token');
+  if (!gAccessToken || !gCfg.sheetId) return;
+
+  const HEADERS = ['ID','Імя','Телефон','Дата','Час','Вік','Гостей','Аніматор','Програма','Ціна','Передоплата','Статус','Джерело','Примітки','Дата створення'];
+
+  // Check if headers exist, if not — add them
+  try {
+    const checkRes = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/\${gCfg.sheetId}/values/A1:O1`,
+      { headers: { Authorization: 'Bearer ' + gAccessToken } }
+    );
+    const checkData = await checkRes.json();
+    if (!checkData.values || !checkData.values.length) {
+      // Add headers
+      await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/\${gCfg.sheetId}/values/A1:O1?valueInputOption=RAW`,
+        {
+          method: 'PUT',
+          headers: { Authorization: 'Bearer ' + gAccessToken, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ values: [HEADERS] })
+        }
+      );
+    }
+
+    // Append order row
+    const row = [
+      order.id, order.name, order.phone, order.date, order.time,
+      order.age, order.guests, order.animator, order.program,
+      order.price, order.prepay, order.status, order.source,
+      order.notes, new Date(order.createdAt).toLocaleDateString('uk-UA')
+    ];
+
+    await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/\${gCfg.sheetId}/values/A:O:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+      {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + gAccessToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ values: [row] })
+      }
+    );
+    console.log('Order added to sheet:', order.name);
+  } catch(e) { console.error('Sheet error:', e); }
+}
+
+async function addOrderToCalendar(order) {
+  saveGoogleCfg();
+  gAccessToken = gAccessToken || localStorage.getItem('hp_g_token');
+  if (!gAccessToken || !order.date) return;
+
+  const calId = gCfg.calId || 'primary';
+  const [h, m] = (order.time || '12:00').split(':').map(Number);
+  const startDt = new Date(order.date + 'T' + (order.time || '12:00') + ':00');
+  const endDt   = new Date(startDt.getTime() + 2 * 3600000); // +2 hours
+
+  const event = {
+    summary: '🎉 Свято: ' + order.name,
+    description: [
+      '👥 Гостей: ' + (order.guests||'—'),
+      '🎂 Вік дитини: ' + (order.age||'—'),
+      '🎭 Аніматор: ' + (order.animator||'—'),
+      '🎪 Програма: ' + (order.program||'—'),
+      '💰 Ціна: ' + (order.price||0) + '₴',
+      '💳 Передоплата: ' + (order.prepay||0) + '₴',
+      '📞 Телефон: ' + (order.phone||'—'),
+      '📝 ' + (order.notes||''),
+    ].join('\n'),
+    start: { dateTime: startDt.toISOString(), timeZone: 'Europe/Kyiv' },
+    end:   { dateTime: endDt.toISOString(),   timeZone: 'Europe/Kyiv' },
+    reminders: {
+      useDefault: false,
+      overrides: [
+        { method: 'popup', minutes: 3 * 24 * 60 },  // 3 days before
+        { method: 'popup', minutes: 60 },             // 1 hour before
+      ]
+    }
+  };
+
+  try {
+    const res = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/\${encodeURIComponent(calId)}/events`,
+      {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + gAccessToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify(event)
+      }
+    );
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    console.log('Event added to calendar:', order.name);
+  } catch(e) { console.error('Calendar error:', e); }
+}
+
+async function syncAllOrdersToGoogle() {
+  saveGoogleCfg();
+  gAccessToken = gAccessToken || localStorage.getItem('hp_g_token');
+  if (!gAccessToken) { showGoogleStatus('Спочатку авторизуйся в Google', 'err'); return; }
+  if (!gCfg.sheetId) { showGoogleStatus('Введи Google Sheets ID', 'err'); return; }
+
+  showGoogleStatus('Синхронізуємо...', 'info');
+  let count = 0;
+  for (const o of orders) {
+    await addOrderToSheet(o);
+    count++;
+  }
+  showGoogleStatus('✅ Синхронізовано ' + count + ' замовлень у Google Таблицю!', 'ok');
+  toast('✅ Google Sheets синхронізовано!', 'success');
+}
 
 function uploadPhoto(clientId, input) {
   const file = input.files[0];
@@ -1628,6 +2439,7 @@ async function loadFromCloud() {
     }
     clients = data.clients;
     attend  = data.attend || {};
+    if (data.orders) orders = data.orders;
     localStorage.setItem('hp_clients', JSON.stringify(clients));
     localStorage.setItem('hp_attend',  JSON.stringify(attend));
     localStorage.setItem('hp_apiKey', key);
@@ -2155,7 +2967,9 @@ function navTo(el) {
   const titleEl = document.getElementById('pageTitle');
   if (titleEl) titleEl.textContent = pageTitles[page]||'';
   if (page==='cards') renderCardLinks();
-  if (page==='salary') { initSalaryMonths(); renderSalary(); }
+  if (page==='salary')  { initSalaryMonths(); renderSalary(); }
+  if (page==='booking') { loadOrders(); renderBooking(); }
+  if (page==='setup')   { loadGoogleCfg(); }
   closeSidebar();
 }
 function switchTab(el) {
