@@ -448,7 +448,8 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray);color:var(--
       <button class="dir-tab" data-dir="school1" onclick="setDirTab(this)">📚 Підгот. Молодша</button>
       <button class="dir-tab" data-dir="school2" onclick="setDirTab(this)">📚 Підгот. Старша</button>
       <button class="dir-tab" data-dir="logo" onclick="setDirTab(this)">🗣 Логопед</button>
-      <button class="dir-tab" data-dir="single" onclick="setDirTab(this)">⚡ Разове</button>
+      <button class="dir-tab" data-dir="single1" onclick="setDirTab(this)">⚡ Разове Гр.1</button>
+      <button class="dir-tab" data-dir="single2" onclick="setDirTab(this)">⚡ Разове Гр.2</button>
       <button class="btn btn-acc btn-sm" style="margin-left:auto" onclick="openAddModal()">+ Додати</button>
     </div>
 
@@ -506,7 +507,8 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray);color:var(--
             <option value="school2">📚 Підготовка до школи — Старша</option>
             <option value="logo">🗣 Логопед (індивідуально)</option>
             <option value="logo_sub">🗣 Логопед (абонемент)</option>
-            <option value="single">💃 Разове заняття (Танці)</option>
+            <option value="single1">💃 Разове заняття — Гр.1</option>
+            <option value="single2">💃 Разове заняття — Гр.2</option>
           </select>
         </div>
         <div id="mDateWrap">
@@ -516,6 +518,13 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray);color:var(--
         </div>
         <div style="background:#F9FAFB;border-radius:10px;padding:12px 14px;font-size:13px;color:#6B7280" id="mInfo">
           <!-- filled by updateModalFields -->
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;
+          padding:10px 12px;background:#FEF3C7;border-radius:10px">
+          <input type="checkbox" id="mNoPay" style="width:16px;height:16px;cursor:pointer">
+          <label for="mNoPay" style="font-size:13px;font-weight:600;color:#78350F;cursor:pointer">
+            💛 Без оплати (перехідний абонемент)
+          </label>
         </div>
         <button onclick="addClientFromModal()"
           style="background:linear-gradient(135deg,#f472b6,#c084fc);color:#fff;border:none;
@@ -1410,7 +1419,7 @@ function addClientFromModal() {
 
   const dateVal  = document.getElementById('mDate').value;
   const isIndiv  = dirKey === 'logo';
-  const isSingle = dirKey === 'single';
+  const isSingle = dirKey === 'single1' || dirKey === 'single2';
 
   let startDate = dateVal ? new Date(dateVal + 'T00:00:00') : new Date();
 
@@ -1432,7 +1441,7 @@ function addClientFromModal() {
 
   // For single lesson — check if same child already has single lessons and just add date
   if (isSingle) {
-    const existing = clients.find(x => x.name === name && x.dirKey === 'single');
+    const existing = clients.find(x => x.name === name && x.dirKey === dirKey);
     if (existing) {
       const newDate = isoD(startDate);
       if (!existing.lessonDates.includes(newDate)) {
@@ -1465,12 +1474,14 @@ function addClientFromModal() {
     }
   }
 
+  const noPay = document.getElementById('mNoPay') && document.getElementById('mNoPay').checked;
   const client = {
     id:           name + '§' + dirKey + '§' + Date.now(),
     name,
     direction:    cfg.public,
     dirKey,
     groupName:    cfg.name,
+    noPay:        noPay,
     startDate:    fmt(startDate),
     endDate:      fmt(endDate),
     totalLessons: isSingle ? 1 : cfg.total,
@@ -1770,8 +1781,10 @@ function renderSalary() {
 }
 
 function getLessonsForGroup(dirKey, year, month) {
-  // Get all clients in this group
-  const groupClients = clients.filter(c => c.dirKey === dirKey);
+  // Include single lessons in corresponding group
+  // single1 counts toward dance1, single2 toward dance2
+  const singleKey = dirKey === 'dance1' ? 'single1' : dirKey === 'dance2' ? 'single2' : null;
+  const groupClients = clients.filter(c => c.dirKey === dirKey || (singleKey && c.dirKey === singleKey));
   if (!groupClients.length) return [];
 
   // Get all unique lesson dates in this month across all clients
@@ -2809,6 +2822,7 @@ function buildCard(c) {
   const numCls=remain<=0?'pn-done':remain<=2?'pn-warn':'pn-ok';
   const stCls=status==='active'?'st-active':status==='ending'?'st-ending':'st-expired';
   const stTxt=status==='active'?'🟢 Активний':status==='ending'?'🟡 Закінчується':'🔴 Вичерпано';
+  const noPayBadge = c.noPay ? '<span style="font-size:10px;background:#FEF3C7;color:#78350F;padding:2px 7px;border-radius:8px;font-weight:700;margin-left:6px">💛 без оплати</span>' : '';
   const cardCls=status==='expired'?'expired':status==='ending'?'ending':'';
 
   const cross=c.crossMonth?`<span class="cross-m" title="Переходить у наступний місяць">↗ між місяцями</span>`:'';
@@ -2831,7 +2845,7 @@ function buildCard(c) {
 
   return `<div class="card ${cardCls}" id="cr-${CSS.escape(c.id)}">
   <div class="card-top">
-    <div class="card-name">${c.name}</div>
+    <div class="card-name">${c.name}${noPayBadge}</div>
     <div class="dir-pill ${dirClass(c.direction)}">${c.direction}</div>
   </div>
   <div class="card-dates">
