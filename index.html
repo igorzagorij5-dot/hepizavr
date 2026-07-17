@@ -325,6 +325,28 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray);color:var(--
 .bk-reminder{background:linear-gradient(135deg,#FEF3C7,#FDE68A);border-radius:12px;
   padding:12px 16px;margin-bottom:12px;border-left:4px solid #F59E0B;
   display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;color:#78350F}
+
+/* ── FINANCE ── */
+.fin-tab{padding:7px 14px;border:1.5px solid var(--border);border-radius:20px;
+  background:#fff;font-size:12px;font-weight:600;cursor:pointer;color:var(--text2);transition:all .15s}
+.fin-tab.active{background:linear-gradient(135deg,#1565C0,#1976D2);color:#fff;border-color:transparent}
+.fin-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--gray2);font-size:13px}
+.fin-row:last-child{border-bottom:none}
+.fin-cat{flex:1;color:var(--text2)}
+.fin-desc{flex:2;color:var(--text)}
+.fin-amount-pos{font-weight:700;color:var(--grn);white-space:nowrap}
+.fin-amount-neg{font-weight:700;color:var(--red);white-space:nowrap}
+.fin-bar-wrap{margin-bottom:8px}
+.fin-bar-label{display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px}
+.fin-bar-bg{height:8px;background:var(--gray2);border-radius:4px;overflow:hidden}
+.fin-bar-fill{height:100%;border-radius:4px}
+.fin-year-table{width:100%;border-collapse:collapse;font-size:12px}
+.fin-year-table th{background:#F0F4FF;color:var(--navy);padding:7px 10px;text-align:center;font-weight:700;border:1px solid var(--border)}
+.fin-year-table td{padding:7px 10px;text-align:right;border:1px solid var(--border)}
+.fin-year-table tr:hover td{background:#F8FAFF}
+.fin-year-table .row-income td{color:var(--grn)}
+.fin-year-table .row-expense td{color:var(--red)}
+.fin-year-table .row-profit td{font-weight:800}
 </style>
 </head>
 <body>
@@ -515,6 +537,11 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray);color:var(--
           <label style="font-size:12px;font-weight:700;color:#6B7280;display:block;margin-bottom:4px">ДАТА ПОЧАТКУ</label>
           <input id="mDate" type="date"
             style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:14px;outline:none">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:700;color:#6B7280;display:block;margin-bottom:4px">ЦІНА АБОНЕМЕНТУ (₴)</label>
+          <input id="mPrice" type="number" placeholder="2800" min="0"
+            style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:14px;outline:none;font-weight:700">
         </div>
         <div style="background:#F9FAFB;border-radius:10px;padding:12px 14px;font-size:13px;color:#6B7280" id="mInfo">
           <!-- filled by updateModalFields -->
@@ -801,11 +828,122 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray);color:var(--
 
   <!-- FINANCE PAGE -->
   <div class="page" id="pg-finance">
-    <div class="coming-soon">
-      <div class="cs-icon">📊</div>
-      <h2>Фінансовий звіт</h2>
-      <p>Зведена фінансова звітність центру</p>
-      <div class="cs-badge">🚧 В розробці</div>
+
+    <!-- MONTH SELECTOR -->
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+      <select id="finMonth" onchange="renderFinance()"
+        style="padding:9px 14px;border:1.5px solid var(--border);border-radius:10px;
+        font-size:14px;font-weight:600;background:#fff;outline:none">
+      </select>
+      <div style="display:flex;gap:6px;margin-left:auto;flex-wrap:wrap;align-items:center">
+        <button class="fin-tab active" data-fintab="dashboard" onclick="setFinTab(this)">📊 Дашборд</button>
+        <button class="fin-tab" data-fintab="income" onclick="setFinTab(this)">💰 Доходи</button>
+        <button class="fin-tab" data-fintab="expense" onclick="setFinTab(this)">📤 Витрати</button>
+        <button class="btn btn-sm" id="closePeriodBtn"
+          style="background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border:none"
+          onclick="closePeriod()">🔒 Зафіксувати місяць</button>
+      </div>
+    </div>
+
+    <!-- DASHBOARD TAB -->
+    <div id="fin-dashboard">
+      <div class="stats" id="finStats"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px" id="finCharts">
+        <!-- Income breakdown -->
+        <div style="background:#fff;border-radius:14px;padding:18px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
+          <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:12px">💰 Доходи по категоріях</div>
+          <div id="finIncomeBreakdown"></div>
+        </div>
+        <!-- Expense breakdown -->
+        <div style="background:#fff;border-radius:14px;padding:18px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
+          <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:12px">📤 Витрати по категоріях</div>
+          <div id="finExpenseBreakdown"></div>
+        </div>
+      </div>
+      <!-- Year summary -->
+      <div style="background:#fff;border-radius:14px;padding:18px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
+        <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:12px">📅 Зведення по місяцях</div>
+        <div id="finYearTable" style="overflow-x:auto"></div>
+      </div>
+    </div>
+
+    <!-- INCOME TAB -->
+    <div id="fin-income" style="display:none">
+      <div style="background:#fff;border-radius:14px;padding:18px;box-shadow:0 1px 4px rgba(0,0,0,.07);margin-bottom:14px">
+        <div style="font-size:13px;font-weight:700;color:var(--grn);margin-bottom:10px">
+          ✅ Автоматичні доходи (з системи)
+        </div>
+        <div id="finAutoIncome"></div>
+      </div>
+      <div style="background:#fff;border-radius:14px;padding:18px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-size:13px;font-weight:700;color:var(--navy)">✍️ Інші доходи (вручну)</div>
+          <button class="btn btn-grn btn-sm" onclick="addFinEntry('income')">+ Додати</button>
+        </div>
+        <div id="finManualIncome"></div>
+      </div>
+    </div>
+
+    <!-- EXPENSE TAB -->
+    <div id="fin-expense" style="display:none">
+      <div style="background:#fff;border-radius:14px;padding:18px;box-shadow:0 1px 4px rgba(0,0,0,.07);margin-bottom:14px">
+        <div style="font-size:13px;font-weight:700;color:var(--acc);margin-bottom:10px">
+          🤖 Зарплата (з блоку Зарплата — авто)
+        </div>
+        <div id="finAutoSalary"></div>
+      </div>
+      <div style="background:#fff;border-radius:14px;padding:18px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-size:13px;font-weight:700;color:var(--navy)">✍️ Інші витрати (вручну)</div>
+          <button class="btn btn-red btn-sm" onclick="addFinEntry('expense')">+ Додати</button>
+        </div>
+        <div id="finManualExpense"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FINANCE ENTRY MODAL -->
+  <div id="finModal" style="display:none;position:fixed;inset:0;z-index:500;
+    background:rgba(0,0,0,.5);align-items:center;justify-content:center;padding:16px">
+    <div style="background:#fff;border-radius:20px;width:100%;max-width:420px;
+      box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden">
+      <div id="finModalHdr" style="padding:18px 22px;color:#fff;
+        display:flex;align-items:center;justify-content:space-between">
+        <h3 style="font-size:15px;font-weight:800" id="finModalTitle">+ Операція</h3>
+        <button onclick="closeFinModal()" style="background:rgba(255,255,255,.2);border:none;
+          color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:14px">✕</button>
+      </div>
+      <div style="padding:18px;display:flex;flex-direction:column;gap:12px">
+        <div>
+          <label class="bk-label">КАТЕГОРІЯ</label>
+          <select id="finCat" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);
+            border-radius:9px;font-size:13px;outline:none;background:#fff" id="finCat"></select>
+        </div>
+        <div>
+          <label class="bk-label">ОПИС</label>
+          <input id="finDesc" type="text" placeholder="Коментар..."
+            style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:13px;outline:none">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label class="bk-label">СУМА (₴)</label>
+            <input id="finAmount" type="number" placeholder="0" min="0"
+              style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;font-weight:700;outline:none">
+          </div>
+          <div>
+            <label class="bk-label">МЕТОД</label>
+            <select id="finMethod" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);
+              border-radius:9px;font-size:13px;outline:none;background:#fff">
+              <option value="cash">💵 Готівка</option>
+              <option value="card">💳 Безнал</option>
+            </select>
+          </div>
+        </div>
+        <button onclick="saveFinEntry()" style="width:100%;padding:12px;border:none;
+          border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;color:#fff"
+          id="finSaveBtn">💾 Зберегти</button>
+      </div>
     </div>
   </div>
 
@@ -831,7 +969,48 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray);color:var(--
 
 </div>
 
-<div class="toast" id="toast"></div>
+<!-- TRANSFER GROUP MODAL -->
+  <div id="transferModal" style="display:none;position:fixed;inset:0;z-index:600;
+    background:rgba(0,0,0,.5);align-items:center;justify-content:center;padding:16px">
+    <div style="background:#fff;border-radius:20px;width:100%;max-width:380px;
+      box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden">
+      <div style="background:linear-gradient(135deg,#6D28D9,#A855F7);padding:18px 22px;
+        color:#fff;display:flex;align-items:center;justify-content:space-between">
+        <h3 style="font-size:15px;font-weight:800">🔄 Перевести в іншу групу</h3>
+        <button onclick="closeTransferModal()" style="background:rgba(255,255,255,.2);border:none;
+          color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:14px">✕</button>
+      </div>
+      <div style="padding:20px">
+        <input type="hidden" id="transferClientId">
+        <div style="margin-bottom:14px">
+          <div style="font-size:13px;color:var(--text2);margin-bottom:4px">Клієнт</div>
+          <div style="font-size:15px;font-weight:700;color:var(--navy)" id="transferClientName"></div>
+        </div>
+        <div style="margin-bottom:14px">
+          <div style="font-size:13px;color:var(--text2);margin-bottom:4px">Поточна група</div>
+          <div style="font-size:13px;font-weight:600;color:#6D28D9;background:#EDE9FE;
+            padding:6px 10px;border-radius:8px;display:inline-block" id="transferCurrentGroup"></div>
+        </div>
+        <div style="margin-bottom:16px">
+          <div style="font-size:13px;color:var(--text2);margin-bottom:6px">Перевести в групу</div>
+          <select id="transferSelect" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);
+            border-radius:9px;font-size:14px;font-weight:600;outline:none;background:#fff"></select>
+        </div>
+        <div style="background:#FEF3C7;border-radius:10px;padding:10px 12px;font-size:12px;
+          color:#78350F;margin-bottom:14px">
+          ⚠️ Відмітки відвідувань збережуться. Картка для батьків не зміниться. 
+          Заняття зарахуються викладачу нової групи.
+        </div>
+        <button onclick="doTransferGroup()" style="width:100%;padding:12px;
+          background:linear-gradient(135deg,#6D28D9,#A855F7);color:#fff;border:none;
+          border-radius:10px;font-size:14px;font-weight:800;cursor:pointer">
+          🔄 Перевести
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
 
 <script>
 // ═══════════════════════════════════════════════════════
@@ -1247,7 +1426,7 @@ async function initCloud() {
   showSetupStatus('Створюємо сховище...', 'info');
 
   try {
-    const payload = { clients, attend, orders, updatedAt: new Date().toISOString() };
+    const payload = { clients, attend, orders, finEntries, updatedAt: new Date().toISOString() };
     const res = await fetch('https://api.jsonbin.io/v3/b', {
       method: 'POST',
       headers: {
@@ -1306,7 +1485,7 @@ async function pushCloud() {
   syncing = true;
   setSyncStatus('spin', 'Синхронізація...');
   try {
-    const payload = { clients, attend, orders, updatedAt: new Date().toISOString() };
+    const payload = { clients, attend, orders, finEntries, updatedAt: new Date().toISOString() };
     const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
       method: 'PUT',
       headers: {
@@ -1345,6 +1524,7 @@ function showSetupStatus(msg, type) {
 // ═══════════════════════════════════════════════════════
 function loadLocal() {
   loadOrders();
+  loadFinEntries();
   loadGoogleCfg();
   try {
     const c = localStorage.getItem('hp_clients');
@@ -1365,7 +1545,8 @@ function loadLocal() {
 // DIRECTION CONFIG
 // ═══════════════════════════════════════════════════════
 const DIR_CONFIG = {"dance1": {"name": "Танці — Група 1", "days": [1, 3, 5], "total": 12, "duration": 40, "public": "Танці"}, "dance2": {"name": "Танці — Група 2", "days": [1, 3, 5], "total": 12, "duration": 40, "public": "Танці"}, "school1": {"name": "Підготовка — Молодша", "days": [2, 4], "total": 8, "duration": 35, "public": "Підготовка до школи"}, "school2": {"name": "Підготовка — Старша", "days": [2, 4], "total": 8, "duration": 35, "public": "Підготовка до школи"}, "logo": {"name": "Логопед (інд.)", "days": [], "total": 10, "duration": 0, "public": "Логопед"}, "logo_sub": {"name": "Логопед (абонемент)", "days": [2, 4], "total": 8, "duration": 35, "public": "Логопед"},
-  "single": {"name": "Разове заняття (Танці)", "days": [], "total": 1, "duration": 0, "public": "Разове заняття"}};
+  "single1": {"name": "Разове заняття — Гр.1", "days": [], "total": 1, "duration": 0, "public": "Разове заняття"},
+  "single2": {"name": "Разове заняття — Гр.2", "days": [], "total": 1, "duration": 0, "public": "Разове заняття"}};
 
 let currentDirFilter = 'all';
 
@@ -1394,17 +1575,18 @@ function updateModalFields() {
   const cfg = DIR_CONFIG[dir];
   const info = document.getElementById('mInfo');
   const dateWrap = document.getElementById('mDateWrap');
-  
+  if (!cfg) return;
+
   if (dir === 'logo') {
     dateWrap.style.display = 'none';
     info.innerHTML = '🗣 Індивідуальні заняття · ' + cfg.total + ' занять без дат · Просто 1, 2, 3...';
+  } else if (dir === 'single1' || dir === 'single2') {
     dateWrap.style.display = 'block';
-    document.querySelector('label[for="mDate"]') && (document.querySelector('label[for="mDate"]').textContent = 'ДАТА ЗАНЯТТЯ');
-    info.innerHTML = '💃 Разове заняття · Вказуй дату кожного разу · Враховується в зарплаті';
+    info.innerHTML = '⚡ Разове заняття · Вказуй дату · Враховується в зарплаті';
   } else {
     dateWrap.style.display = 'block';
     const dayNames = ['Нд','Пн','Вт','Ср','Чт','Пт','Сб'];
-    const days = cfg.days.map(d=>dayNames[d]).join(', ');
+    const days = (cfg.days||[]).map(d=>dayNames[d]).join(', ');
     info.innerHTML = '📅 ' + cfg.total + ' занять · ' + cfg.duration + ' днів · Дні: ' + days;
   }
 }
@@ -1451,6 +1633,7 @@ function addClientFromModal() {
       saveAll();
       closeAddModal();
       document.getElementById('mName').value = '';
+  if(document.getElementById('mPrice')) document.getElementById('mPrice').value = '';
       renderAll();
       toast('✅ Додано заняття ' + fmt(startDate) + ' для ' + name, 'success');
       return;
@@ -1482,6 +1665,8 @@ function addClientFromModal() {
     dirKey,
     groupName:    cfg.name,
     noPay:        noPay,
+    price:        parseInt((document.getElementById('mPrice')||{value:0}).value)||0,
+    price:        parseInt(document.getElementById('mPrice').value)||0,
     startDate:    fmt(startDate),
     endDate:      fmt(endDate),
     totalLessons: isSingle ? 1 : cfg.total,
@@ -1583,6 +1768,112 @@ function removeTransferDay(c, absentIdx) {
   }
 }
 
+
+function transferGroup(clientId) {
+  const c = clients.find(x=>x.id===clientId);
+  if (!c) return;
+
+  // Build options based on direction type (dance or school)
+  const isDance  = c.dirKey === 'dance1' || c.dirKey === 'dance2';
+  const isSchool = c.dirKey === 'school1' || c.dirKey === 'school2';
+
+  let options = [];
+  if (isDance) {
+    options = [
+      { key: 'dance1', label: '💃 Танці — Група 1' },
+      { key: 'dance2', label: '💃 Танці — Група 2' },
+    ];
+  } else if (isSchool) {
+    options = [
+      { key: 'school1', label: '📚 Підготовка — Молодша' },
+      { key: 'school2', label: '📚 Підготовка — Старша' },
+    ];
+  }
+
+  // Filter out current group
+  const otherOptions = options.filter(o => o.key !== c.dirKey);
+  if (!otherOptions.length) { toast('Немає інших груп для переводу', 'warn'); return; }
+
+  // Show group transfer modal
+  const modal = document.getElementById('transferModal');
+  const select = document.getElementById('transferSelect');
+  select.innerHTML = otherOptions.map(o =>
+    `<option value="${o.key}">${o.label}</option>`
+  ).join('');
+  document.getElementById('transferClientId').value = clientId;
+  document.getElementById('transferClientName').textContent = c.name;
+  document.getElementById('transferCurrentGroup').textContent = c.groupName || c.direction;
+  modal.style.display = 'flex';
+}
+
+function doTransferGroup() {
+  const clientId = document.getElementById('transferClientId').value;
+  const newDirKey = document.getElementById('transferSelect').value;
+  const c = clients.find(x=>x.id===clientId);
+  if (!c) return;
+
+  const cfg = DIR_CONFIG[newDirKey];
+  if (!cfg) return;
+
+  const oldGroup = c.groupName || c.dirKey;
+
+  // Update group but keep attendance, dates, everything else
+  c.dirKey     = newDirKey;
+  c.groupName  = cfg.name;
+  // direction stays same (Танці/Підготовка) — card for parents unchanged
+  // Just update groupName so salary counts correctly
+
+  // Update id to reflect new group (but keep old attend data)
+  const oldId = c.id;
+  const newId = c.name + '§' + newDirKey + '§' + Date.now();
+  c.id = newId;
+
+  // Move attendance data
+  if (attend[oldId]) {
+    attend[newId] = attend[oldId];
+    delete attend[oldId];
+  }
+
+  saveAll();
+  closeTransferModal();
+  renderAll();
+  toast(`✅ ${c.name} переведено: ${oldGroup} → ${cfg.name}`, 'success');
+}
+
+function closeTransferModal() {
+  document.getElementById('transferModal').style.display = 'none';
+}
+
+
+function swapLessonGroup(clientId, lessonIdx) {
+  const c = clients.find(x=>x.id===clientId);
+  if (!c) return;
+
+  if (!attend[clientId]) attend[clientId] = {};
+  if (!attend[clientId]._groupOverride) attend[clientId]._groupOverride = {};
+
+  const current = attend[clientId]._groupOverride[lessonIdx];
+  const isDance1 = c.dirKey === 'dance1';
+  const isDance2 = c.dirKey === 'dance2';
+
+  // Toggle: no override → other group → back to own group
+  if (!current) {
+    // Set override to opposite group
+    const otherGroup = isDance1 ? 'dance2' : 'dance1';
+    attend[clientId]._groupOverride[lessonIdx] = otherGroup;
+    toast('🔄 Заняття зараховано в ' + DIR_CONFIG[otherGroup].name, 'success');
+  } else {
+    // Remove override — back to own group
+    delete attend[clientId]._groupOverride[lessonIdx];
+    toast('↩️ Заняття повернуто в ' + DIR_CONFIG[c.dirKey].name, 'success');
+  }
+
+  // Re-render card
+  const el = document.getElementById('cr-'+CSS.escape(clientId));
+  if (el) el.outerHTML = buildCard(c);
+  saveAll();
+}
+
 function deleteClient(clientId) {
   const c = clients.find(x=>x.id===clientId);
   if (!c) return;
@@ -1674,9 +1965,9 @@ function initSalaryMonths() {
                   'Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
   const now = new Date();
   sel.innerHTML = '';
-  // Show last 6 months + current
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+  // Show 6 past + current + 3 future
+  for (let i = -6; i <= 3; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
     const val = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
     const label = months[d.getMonth()] + ' ' + d.getFullYear();
     const opt = document.createElement('option');
@@ -1782,12 +2073,10 @@ function renderSalary() {
 
 function getLessonsForGroup(dirKey, year, month) {
   // Include single lessons in corresponding group
-  // single1 counts toward dance1, single2 toward dance2
   const singleKey = dirKey === 'dance1' ? 'single1' : dirKey === 'dance2' ? 'single2' : null;
   const groupClients = clients.filter(c => c.dirKey === dirKey || (singleKey && c.dirKey === singleKey));
-  if (!groupClients.length) return [];
 
-  // Get all unique lesson dates in this month across all clients
+  // Get all unique lesson dates in this month across all clients in this group
   const lessonDatesSet = new Set();
   groupClients.forEach(c => {
     (c.lessonDates || []).forEach(iso => {
@@ -1797,21 +2086,57 @@ function getLessonsForGroup(dirKey, year, month) {
     });
   });
 
+  // ALSO add dates from OTHER groups' clients who have override pointing to THIS group
+  clients.forEach(c => {
+    if (c.dirKey === dirKey) return; // already counted
+    const attC = attend[c.id] || {};
+    const overrides = attC._groupOverride || {};
+    Object.entries(overrides).forEach(([idxStr, overrideDirKey]) => {
+      if (overrideDirKey !== dirKey) return;
+      const idx = parseInt(idxStr);
+      const iso = (c.lessonDates || [])[idx];
+      if (!iso || iso.startsWith('slot-')) return;
+      const [y, mo] = iso.split('-').map(Number);
+      if (y === year && mo === month) lessonDatesSet.add(iso);
+    });
+  });
+
+  if (!lessonDatesSet.size) return [];
+
   // For each lesson date, count how many kids were present
-  // Only include dates where AT LEAST ONE child was marked present
+  // Respect group overrides: if a child has override for this lesson, count them in override group
   const results = [];
   Array.from(lessonDatesSet).sort().forEach(iso => {
     const [y, mo, d] = iso.split('-');
     const present = groupClients.filter(c => {
+      const attC = attend[c.id] || {};
       const idx = (c.lessonDates || []).indexOf(iso);
       if (idx < 0) return false;
-      return attend[c.id] && attend[c.id][idx] === 'present';
+      if (attC[idx] !== 'present') return false;
+      // Check group override
+      const override = attC._groupOverride && attC._groupOverride[idx];
+      if (override) {
+        // This lesson was in override group — count only if we're that group
+        return override === dirKey;
+      }
+      // No override — count in own group (which is dirKey since groupClients filtered by dirKey)
+      return true;
     }).length;
 
-    // Skip days where nobody came — lesson didn't happen
-    if (present === 0) return;
+    // Also count clients from OTHER groups who have override pointing TO this dirKey
+    const overrideCount = clients.filter(c => {
+      if (c.dirKey === dirKey) return false; // already counted above
+      const attC = attend[c.id] || {};
+      const idx = (c.lessonDates || []).indexOf(iso);
+      if (idx < 0) return false;
+      if (attC[idx] !== 'present') return false;
+      const override = attC._groupOverride && attC._groupOverride[idx];
+      return override === dirKey;
+    }).length;
 
-    results.push({ date: iso, dateStr: d+'.'+mo, present });
+    const total = present + overrideCount;
+    if (total === 0) return;
+    results.push({ date: iso, dateStr: d+'.'+mo, present: total });
   });
   return results;
 }
@@ -2399,6 +2724,456 @@ async function syncAllOrdersToGoogle() {
   toast('✅ Google Sheets синхронізовано!', 'success');
 }
 
+
+// ═══════════════════════════════════════════════════════
+// FINANCE MODULE
+// ═══════════════════════════════════════════════════════
+let finEntries = []; // {id, type, cat, desc, amount, method, month, auto, source}
+let currentFinTab = 'dashboard';
+
+const FIN_INCOME_CATS = ['Абонемент (група)', 'Абонемент (інд.)', 'Разове заняття', 'Свято/захід', 'Майстер-клас', 'Доп. послуги', 'Інші доходи'];
+const FIN_EXPENSE_CATS = ['Оренда', 'Комунальні послуги', 'Матеріали та витратники', 'Реклама і маркетинг', 'Обладнання', 'Банк і комісії', 'Податки і збори', 'Інші витрати'];
+
+function loadFinEntries() {
+  try {
+    const saved = localStorage.getItem('hp_fin_entries');
+    if (saved) finEntries = JSON.parse(saved);
+  } catch(e) { finEntries = []; }
+}
+
+function saveFinEntries() {
+  localStorage.setItem('hp_fin_entries', JSON.stringify(finEntries));
+  if (cfg.apiKey && cfg.binId) pushCloud();
+}
+
+function initFinMonths() {
+  const sel = document.getElementById('finMonth');
+  if (!sel) return;
+  const monthNames = ['Січень','Лютий','Березень','Квітень','Травень','Червень',
+                      'Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
+  const now = new Date();
+  const nowKey = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+
+  // Collect all months that have data
+  const monthSet = new Set();
+
+  // From clients startDate
+  clients.forEach(c => {
+    if (!c.startDate) return;
+    const p = c.startDate.split('.');
+    if (p.length === 3) monthSet.add(p[2]+'-'+p[1].padStart(2,'0'));
+  });
+
+  // From finEntries
+  finEntries.forEach(e => { if (e.month) monthSet.add(e.month); });
+
+  // From orders
+  orders.forEach(o => {
+    if (!o.date) return;
+    const d = new Date(o.date);
+    monthSet.add(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));
+  });
+
+  // Always include current + 3 future
+  for (let i = 0; i <= 3; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    monthSet.add(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));
+  }
+
+  // Sort and build options
+  const sorted = Array.from(monthSet).sort();
+  sel.innerHTML = '';
+  sorted.forEach(val => {
+    const [y, m] = val.split('-').map(Number);
+    const opt = document.createElement('option');
+    opt.value = val;
+    opt.textContent = monthNames[m-1] + ' ' + y;
+    if (val === nowKey) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  // Select current if not set
+  if (!sel.value) sel.value = nowKey;
+}
+
+function setFinTab(el) {
+  document.querySelectorAll('.fin-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  currentFinTab = el.dataset.fintab;
+  ['dashboard','income','expense'].forEach(t => {
+    document.getElementById('fin-'+t).style.display = t===currentFinTab ? 'block' : 'none';
+  });
+  renderFinance();
+}
+
+// ── AUTO INCOME FROM SYSTEM ───────────────────────────
+function getAutoIncomeForMonth(year, month) {
+  const items = [];
+  const monthKey = year + '-' + String(month).padStart(2,'0');
+
+  // If month is frozen — return frozen records instead of live data
+  const frozenIncome = finEntries.filter(e => e.month === monthKey && e.frozen && e.type === 'income');
+  if (frozenIncome.length) return frozenIncome.map(e => ({cat: e.cat, desc: e.desc, amount: e.amount, frozen: true}));
+
+  // 1. Subscriptions — clients whose startDate is in this month (non-noPay)
+  // For single lessons: group by name and sum up all their lessons in this month
+  const singleMap = {}; // name → {totalAmount, count, dirKey}
+
+  clients.forEach(c => {
+    if (c.noPay) return;
+
+    const isSingle = c.dirKey === 'single1' || c.dirKey === 'single2';
+
+    if (isSingle) {
+      // Count lessons that have dates in this month
+      const attC = attend[c.id] || {};
+      let lessonCount = 0;
+      (c.lessonDates || []).forEach((iso, idx) => {
+        if (!iso || iso.startsWith('slot-')) return;
+        const [y, mo] = iso.split('-').map(Number);
+        if (y !== year || mo !== month) return;
+        if (attC[idx] === 'present' || attC[idx] === undefined) lessonCount++;
+      });
+      if (lessonCount === 0 && !c.startDate) return;
+      // Use startDate month as fallback
+      if (lessonCount === 0 && c.startDate) {
+        const parts = c.startDate.split('.');
+        if (parts.length === 3) {
+          const [d, mo, y] = parts.map(Number);
+          if (y !== year || mo !== month) return;
+          lessonCount = 1;
+        }
+      }
+      if (lessonCount === 0) return;
+      const key = c.name;
+      if (!singleMap[key]) singleMap[key] = { amount: 0, count: 0 };
+      singleMap[key].amount += (c.price || 0) * lessonCount;
+      singleMap[key].count += lessonCount;
+      return;
+    }
+
+    // Regular subscriptions
+    if (!c.startDate) return;
+    const parts = c.startDate.split('.');
+    if (parts.length !== 3) return;
+    const [d, mo, y] = parts.map(Number);
+    if (y !== year || mo !== month) return;
+
+    const cfg = DIR_CONFIG[c.dirKey];
+    let cat = 'Абонемент (група)';
+    if (c.dirKey === 'logo' || c.dirKey === 'logo_sub') cat = 'Абонемент (інд.)';
+
+    items.push({ cat, desc: c.name + ' — ' + (cfg ? cfg.name : c.direction), amount: c.price||0, auto: true, source: 'subscription' });
+  });
+
+  // Add grouped single lessons
+  Object.entries(singleMap).forEach(([name, data]) => {
+    items.push({ cat: 'Разове заняття', desc: name + ' × ' + data.count + ' занять', amount: data.amount, auto: true, source: 'single' });
+  });
+
+  // 2. Orders (done) with date in this month
+  orders.forEach(o => {
+    if (!o.date || o.status !== 'done') return;
+    const d = new Date(o.date);
+    if (d.getFullYear() !== year || d.getMonth()+1 !== month) return;
+    items.push({ cat: 'Свято/захід', desc: o.name + (o.program?' — '+o.program:''), amount: o.price||0, auto: true, source: 'order' });
+  });
+
+  return items;
+}
+
+function getAutoSalaryForMonth(year, month) {
+  const items = [];
+  const monthKey = year + '-' + String(month).padStart(2,'0');
+
+  // If month is frozen — return frozen records
+  const frozenSal = finEntries.filter(e => e.month === monthKey && e.frozen && e.type === 'expense');
+  if (frozenSal.length) return frozenSal.map(e => ({cat: e.cat, desc: e.desc, amount: e.amount, frozen: true}));
+
+  TEACHERS.forEach(t => {
+    let total = 0;
+    t.groups.forEach(g => {
+      const lessons = getLessonsForGroup(g.dirKey, year, month);
+      lessons.forEach(l => { total += l.present >= 5 ? g.rate5plus : g.rateBelow5; });
+    });
+    if (total > 0) items.push({ cat: 'Зарплата педагогів', desc: t.name + ' — ' + t.role, amount: total });
+  });
+  return items;
+}
+
+function getManualEntriesForMonth(year, month, type) {
+  const key = year + '-' + String(month).padStart(2,'0');
+  return finEntries.filter(e => e.month === key && e.type === type);
+}
+
+// ── RENDER ────────────────────────────────────────────
+function renderFinance() {
+  const sel = document.getElementById('finMonth');
+  if (!sel) return;
+  const [year, month] = sel.value.split('-').map(Number);
+
+  const autoIncome  = getAutoIncomeForMonth(year, month);
+  const autoSalary  = getAutoSalaryForMonth(year, month);
+  const manIncome   = getManualEntriesForMonth(year, month, 'income');
+  const manExpense  = getManualEntriesForMonth(year, month, 'expense');
+
+  // Calculate totals
+  const totalAutoIncome  = autoIncome.reduce((s,i) => s + (i.amount||0), 0);
+  const totalManIncome   = manIncome.reduce((s,i) => s + (i.amount||0), 0);
+  const totalIncome      = totalAutoIncome + totalManIncome;
+  const totalSalary      = autoSalary.reduce((s,i) => s + i.amount, 0);
+  const totalManExpense  = manExpense.reduce((s,i) => s + i.amount, 0);
+  const totalExpense     = totalSalary + totalManExpense;
+  const profit           = totalIncome - totalExpense;
+  const margin           = totalIncome > 0 ? Math.round(profit/totalIncome*100) : 0;
+
+  // ── DASHBOARD ──
+  if (currentFinTab === 'dashboard') {
+    // KPI stats
+    document.getElementById('finStats').innerHTML = `
+      <div class="stat"><div class="v" style="color:var(--grn);font-size:20px">${totalIncome.toLocaleString('uk')}₴</div><div class="l">Доходи</div></div>
+      <div class="stat"><div class="v" style="color:var(--red);font-size:20px">${totalExpense.toLocaleString('uk')}₴</div><div class="l">Витрати</div></div>
+      <div class="stat"><div class="v" style="color:${profit>=0?'var(--grn)':'var(--red)'};font-size:20px">${profit.toLocaleString('uk')}₴</div><div class="l">Прибуток</div></div>
+      <div class="stat"><div class="v" style="color:${margin>=0?'var(--grn)':'var(--red)'};font-size:18px">${margin}%</div><div class="l">Рентабельність</div></div>
+    `;
+
+    // Income breakdown
+    const incByCat = {};
+    [...autoIncome, ...manIncome].forEach(i => {
+      incByCat[i.cat] = (incByCat[i.cat]||0) + (i.amount||0);
+    });
+    document.getElementById('finIncomeBreakdown').innerHTML = Object.entries(incByCat)
+      .filter(([,v])=>v>0)
+      .sort(([,a],[,b])=>b-a)
+      .map(([cat, val]) => {
+        const pct = totalIncome>0 ? Math.round(val/totalIncome*100) : 0;
+        return `<div class="fin-bar-wrap">
+          <div class="fin-bar-label"><span>${cat}</span><span style="font-weight:700;color:var(--grn)">${val.toLocaleString('uk')}₴ (${pct}%)</span></div>
+          <div class="fin-bar-bg"><div class="fin-bar-fill" style="width:${pct}%;background:var(--grn-m)"></div></div>
+        </div>`;
+      }).join('') || '<p style="color:var(--text3);font-size:13px">Немає даних</p>';
+
+    // Expense breakdown
+    const expByCat = {};
+    [...autoSalary, ...manExpense].forEach(i => {
+      expByCat[i.cat] = (expByCat[i.cat]||0) + i.amount;
+    });
+    document.getElementById('finExpenseBreakdown').innerHTML = Object.entries(expByCat)
+      .filter(([,v])=>v>0)
+      .sort(([,a],[,b])=>b-a)
+      .map(([cat, val]) => {
+        const pct = totalExpense>0 ? Math.round(val/totalExpense*100) : 0;
+        return `<div class="fin-bar-wrap">
+          <div class="fin-bar-label"><span>${cat}</span><span style="font-weight:700;color:var(--red)">${val.toLocaleString('uk')}₴ (${pct}%)</span></div>
+          <div class="fin-bar-bg"><div class="fin-bar-fill" style="width:${pct}%;background:var(--red-m)"></div></div>
+        </div>`;
+      }).join('') || '<p style="color:var(--text3);font-size:13px">Немає даних</p>';
+
+    // Year table
+    const months = ['Січ','Лют','Бер','Кві','Тра','Чер','Лип','Сер','Вер','Жов','Лис','Гру'];
+    const curYear = year;
+    let incRow='', expRow='', profRow='';
+    let totInc=0, totExp=0;
+    months.forEach((mn, mi) => {
+      const mo = mi+1;
+      const ai = getAutoIncomeForMonth(curYear, mo).reduce((s,i)=>s+(i.amount||0),0);
+      const mi2 = getManualEntriesForMonth(curYear, mo,'income').reduce((s,i)=>s+i.amount,0);
+      const sal = getAutoSalaryForMonth(curYear, mo).reduce((s,i)=>s+i.amount,0);
+      const me = getManualEntriesForMonth(curYear, mo,'expense').reduce((s,i)=>s+i.amount,0);
+      const inc = ai+mi2, exp = sal+me, pr = inc-exp;
+      totInc+=inc; totExp+=exp;
+      const style = mo===month ? 'font-weight:800;background:#EEF2FF' : '';
+      incRow  += `<td style="${style}">${inc?inc.toLocaleString('uk'):'—'}</td>`;
+      expRow  += `<td style="${style}">${exp?exp.toLocaleString('uk'):'—'}</td>`;
+      profRow += `<td style="${style};color:${pr>=0?'#1B5E20':'#B71C1C'}">${inc||exp?(pr>0?'+':'')+pr.toLocaleString('uk'):'—'}</td>`;
+    });
+    const totProf = totInc-totExp;
+    document.getElementById('finYearTable').innerHTML = `
+      <table class="fin-year-table">
+        <tr><th>Рядок</th>${months.map(m=>`<th>${m}</th>`).join('')}<th>РАЗОМ</th></tr>
+        <tr class="row-income"><td style="font-weight:700;color:var(--grn)">💰 Доходи</td>${incRow}<td style="font-weight:800">${totInc.toLocaleString('uk')}₴</td></tr>
+        <tr class="row-expense"><td style="font-weight:700;color:var(--red)">📤 Витрати</td>${expRow}<td style="font-weight:800">${totExp.toLocaleString('uk')}₴</td></tr>
+        <tr class="row-profit"><td style="font-weight:700">💵 Прибуток</td>${profRow}<td style="font-weight:800;color:${totProf>=0?'var(--grn)':'var(--red)'}">${(totProf>0?'+':'')+totProf.toLocaleString('uk')}₴</td></tr>
+      </table>`;
+  }
+
+  // ── INCOME TAB ──
+  if (currentFinTab === 'income') {
+    // Check if month is frozen
+    const isFrozen = finEntries.some(e => e.month === sel.value && e.frozen);
+    const frozenNotice = isFrozen
+      ? `<div style="background:#FEF3C7;border-radius:8px;padding:8px 12px;font-size:12px;
+          font-weight:700;color:#78350F;margin-bottom:8px">
+          🔒 Місяць зафіксовано — дані збережено постійно
+        </div>`
+      : `<div style="background:#EFF6FF;border-radius:8px;padding:8px 12px;font-size:12px;
+          color:#1E40AF;margin-bottom:8px">
+          💡 Натисни <b>🔒 Зафіксувати місяць</b> щоб зберегти дані перед видаленням абонементів
+        </div>`;
+
+    // Auto income
+    const autoHtml = autoIncome.length
+      ? autoIncome.map(i => `<div class="fin-row">
+          <span class="fin-cat">${i.cat}</span>
+          <span class="fin-desc">${i.desc}</span>
+          <span class="fin-amount-pos">${i.amount?i.amount.toLocaleString('uk')+'₴':'—'}</span>
+        </div>`).join('')
+      : '<p style="color:var(--text3);font-size:13px;padding:8px 0">Немає автоматичних доходів за цей місяць</p>';
+    document.getElementById('finAutoIncome').innerHTML = frozenNotice + autoHtml +
+      `<div style="padding:10px 0;border-top:2px solid var(--border);display:flex;justify-content:space-between;font-size:13px;font-weight:800">
+        <span>Разом авто:</span><span style="color:var(--grn)">${totalAutoIncome.toLocaleString('uk')}₴</span>
+      </div>`;
+
+    // Manual income
+    const manHtml = manIncome.length
+      ? manIncome.map(e => `<div class="fin-row">
+          <span class="fin-cat">${e.cat}</span>
+          <span class="fin-desc">${e.desc||'—'}</span>
+          <span class="fin-amount-pos">${e.amount.toLocaleString('uk')}₴</span>
+          <button onclick="deleteFinEntry('${e.id}')" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:14px">🗑</button>
+        </div>`).join('')
+      : '<p style="color:var(--text3);font-size:13px;padding:8px 0">Немає ручних записів</p>';
+    document.getElementById('finManualIncome').innerHTML = manHtml;
+  }
+
+  // ── EXPENSE TAB ──
+  if (currentFinTab === 'expense') {
+    const salHtml = autoSalary.length
+      ? autoSalary.map(i => `<div class="fin-row">
+          <span class="fin-cat">${i.cat}</span>
+          <span class="fin-desc">${i.desc}</span>
+          <span class="fin-amount-neg">${i.amount.toLocaleString('uk')}₴</span>
+        </div>`).join('')
+      : '<p style="color:var(--text3);font-size:13px;padding:8px 0">Зарплата за цей місяць не нарахована</p>';
+    document.getElementById('finAutoSalary').innerHTML = salHtml +
+      `<div style="padding:10px 0;border-top:2px solid var(--border);display:flex;justify-content:space-between;font-size:13px;font-weight:800">
+        <span>Разом зарплата:</span><span style="color:var(--red)">${totalSalary.toLocaleString('uk')}₴</span>
+      </div>`;
+
+    const expHtml = manExpense.length
+      ? manExpense.map(e => `<div class="fin-row">
+          <span class="fin-cat">${e.cat}</span>
+          <span class="fin-desc">${e.desc||'—'}</span>
+          <span class="fin-amount-neg">${e.amount.toLocaleString('uk')}₴</span>
+          <button onclick="deleteFinEntry('${e.id}')" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:14px">🗑</button>
+        </div>`).join('')
+      : '<p style="color:var(--text3);font-size:13px;padding:8px 0">Немає ручних витрат</p>';
+    document.getElementById('finManualExpense').innerHTML = expHtml;
+  }
+}
+
+// ── MODAL ─────────────────────────────────────────────
+let finModalType = 'income';
+
+function addFinEntry(type) {
+  finModalType = type;
+  const hdr = document.getElementById('finModalHdr');
+  const btn = document.getElementById('finSaveBtn');
+  const catSel = document.getElementById('finCat');
+  const title = document.getElementById('finModalTitle');
+
+  if (type === 'income') {
+    hdr.style.background = 'linear-gradient(135deg,#2E7D32,#4CAF50)';
+    btn.style.background = 'var(--grn)';
+    title.textContent = '+ Дохід';
+    catSel.innerHTML = FIN_INCOME_CATS.map(c=>`<option>${c}</option>`).join('');
+  } else {
+    hdr.style.background = 'linear-gradient(135deg,#C62828,#E53935)';
+    btn.style.background = 'var(--red)';
+    title.textContent = '+ Витрата';
+    catSel.innerHTML = FIN_EXPENSE_CATS.map(c=>`<option>${c}</option>`).join('');
+  }
+
+  document.getElementById('finDesc').value = '';
+  document.getElementById('finAmount').value = '';
+  document.getElementById('finModal').style.display = 'flex';
+}
+
+function closeFinModal() {
+  document.getElementById('finModal').style.display = 'none';
+}
+
+function saveFinEntry() {
+  const amount = parseFloat(document.getElementById('finAmount').value);
+  if (!amount || amount <= 0) { toast('⚠️ Введи суму','warn'); return; }
+
+  const sel = document.getElementById('finMonth');
+  const entry = {
+    id:     'fin_' + Date.now(),
+    type:   finModalType,
+    cat:    document.getElementById('finCat').value,
+    desc:   document.getElementById('finDesc').value.trim(),
+    amount,
+    method: document.getElementById('finMethod').value,
+    month:  sel.value,
+  };
+
+  finEntries.push(entry);
+  saveFinEntries();
+  closeFinModal();
+  renderFinance();
+  toast(finModalType==='income' ? '💰 Дохід додано!' : '📤 Витрату додано!', 'success');
+}
+
+
+function closePeriod() {
+  const sel = document.getElementById('finMonth');
+  if (!sel) return;
+  const monthVal = sel.value;
+  const [year, month] = monthVal.split('-').map(Number);
+  const monthNames = ['Січень','Лютий','Березень','Квітень','Травень','Червень',
+                      'Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
+  const monthLabel = monthNames[month-1] + ' ' + year;
+
+  // Check if already closed
+  const alreadyClosed = finEntries.some(e => e.month === monthVal && e.frozen);
+  if (alreadyClosed) {
+    if (!confirm('Місяць ' + monthLabel + ' вже зафіксовано. Перезафіксувати (видалить старі авто-записи)?')) return;
+    finEntries = finEntries.filter(e => !(e.month === monthVal && e.frozen));
+  } else {
+    if (!confirm('Зафіксувати ' + monthLabel + '?\n\nВсі автоматичні доходи і зарплата будуть збережені як постійні записи.\nПісля цього можна видаляти старі абонементи — дані залишаться.')) return;
+  }
+
+  // Freeze auto income
+  const autoIncome = getAutoIncomeForMonth(year, month);
+  autoIncome.forEach(i => {
+    finEntries.push({
+      id:     'frz_inc_' + Date.now() + '_' + Math.random().toString(36).slice(2),
+      type:   'income',
+      cat:    i.cat,
+      desc:   i.desc + ' [авто]',
+      amount: i.amount,
+      method: 'cash',
+      month:  monthVal,
+      frozen: true,
+    });
+  });
+
+  // Freeze auto salary
+  const autoSalary = getAutoSalaryForMonth(year, month);
+  autoSalary.forEach(i => {
+    finEntries.push({
+      id:     'frz_sal_' + Date.now() + '_' + Math.random().toString(36).slice(2),
+      type:   'expense',
+      cat:    i.cat,
+      desc:   i.desc + ' [авто]',
+      amount: i.amount,
+      method: 'cash',
+      month:  monthVal,
+      frozen: true,
+    });
+  });
+
+  saveFinEntries();
+  renderFinance();
+  toast('🔒 ' + monthLabel + ' зафіксовано! Тепер можна видаляти старі абонементи.', 'success');
+}
+function deleteFinEntry(id) {
+  finEntries = finEntries.filter(e=>e.id!==id);
+  saveFinEntries();
+  renderFinance();
+  toast('🗑 Видалено','success');
+}
+
 function uploadPhoto(clientId, input) {
   const file = input.files[0];
   if (!file) return;
@@ -2453,6 +3228,7 @@ async function loadFromCloud() {
     clients = data.clients;
     attend  = data.attend || {};
     if (data.orders) orders = data.orders;
+    if (data.finEntries) finEntries = data.finEntries;
     localStorage.setItem('hp_clients', JSON.stringify(clients));
     localStorage.setItem('hp_attend',  JSON.stringify(attend));
     localStorage.setItem('hp_apiKey', key);
@@ -2775,11 +3551,8 @@ function renderCards() {
   const st = (document.getElementById('fStatus')||{}).value||'';
   const filtered = clients.filter(c=>{
     if (currentDirFilter && currentDirFilter !== 'all') {
-      // Match by dirKey if available, or by direction name
-      const cfg = DIR_CONFIG[currentDirFilter];
-      const matchByKey  = c.dirKey === currentDirFilter;
-      const matchByName = cfg && (c.direction === cfg.public || c.direction === cfg.name);
-      if (!matchByKey && !matchByName) return false;
+      // Match strictly by dirKey only — prevents Гр.1 showing in Гр.2
+      if (c.dirKey !== currentDirFilter) return false;
     }
     if (sl && !c.name.toLowerCase().includes(sl)) return false;
     if (st && getStatus(c) !== st) return false;
@@ -2833,13 +3606,24 @@ function buildCard(c) {
     const parts  = isSlot ? [] : iso.split('-');
     const [y,mo,d] = parts.length===3 ? parts : ['','',''];
     const dateStr  = isSlot ? '' : (d+'.'+mo);
-    const tipStr   = isSlot ? ('Заняття '+(i+1)) : (d+'.'+mo+'.'+y);
+    const tipStr   = isSlot ? 'Заняття '+(i+1) : (d+'.'+mo+'.'+y);
     const icon=s==='present'?'✓':s==='absent'?'✗':'';
     const cls=s==='present'?'present':s==='absent'?'absent':'';
-    return `<div class="dot ${cls}" onclick="toggle('${esc(c.id)}',${i})" title="${tipStr}">
-      <span>${icon||i+1}</span>
+    const grpOverride = att._groupOverride && att._groupOverride[i];
+    const grpLabel = grpOverride ? (grpOverride==='dance1'?'Г1':'Г2') : '';
+    const grpBadge = grpOverride
+      ? `<span style="position:absolute;top:-7px;right:-5px;font-size:8px;background:#6D28D9;color:#fff;border-radius:4px;padding:0 3px;font-weight:700">${grpLabel}</span>`
+      : '';
+    const canSwap = s==='present' && (c.dirKey==='dance1'||c.dirKey==='dance2');
+    const swapBtn = canSwap
+      ? `<span onclick="event.stopPropagation();swapLessonGroup('${esc(c.id)}',${i})" style="position:absolute;bottom:-9px;left:50%;transform:translateX(-50%);font-size:9px;background:#EDE9FE;color:#6D28D9;border-radius:4px;padding:0 4px;cursor:pointer;white-space:nowrap;z-index:3" title="Перенести в іншу групу">🔄</span>`
+      : '';
+    return `<div class="dot ${cls}" onclick="toggle('${esc(c.id)}',${i})" style="position:relative;margin-bottom:${canSwap?'10px':'0'}" title="${tipStr}">
+      ${grpBadge}
+      <span>${icon||(i+1)}</span>
       <span class="ddate">${dateStr}</span>
       <span class="dot-tip">${tipStr}</span>
+      ${swapBtn}
     </div>`;
   }).join('');
 
@@ -2849,8 +3633,9 @@ function buildCard(c) {
     <div class="dir-pill ${dirClass(c.direction)}">${c.direction}</div>
   </div>
   <div class="card-dates">
-    <span>📅 ${c.startDate}</span><span>→</span>
-    <span>${c.endDate} ${cross}</span>
+    <span>${c.startDate ? '📅 '+c.startDate : '📅 Інд.'}</span>
+    ${c.startDate ? '<span>→</span><span>'+c.endDate+' '+cross+'</span>' : cross}
+    ${c.price ? '<span style="font-weight:700;color:#2E7D32">'+c.price.toLocaleString('uk')+'₴</span>' : ''}
   </div>
   <div class="prog-wrap">
     <div class="prog-row">
@@ -2872,6 +3657,10 @@ function buildCard(c) {
       📷
       <input type="file" accept="image/*" style="display:none" onchange="uploadPhoto('${esc(c.id)}',this)">
     </label>
+    ${['dance1','dance2','school1','school2'].includes(c.dirKey) ? `
+    <button class="btn btn-xs" style="background:#EDE9FE;color:#6D28D9;border:none"
+      onclick="transferGroup('${esc(c.id)}')" title="Перевести в іншу групу">🔄 Група</button>
+    ` : ''}
     <button class="btn btn-acc btn-xs" onclick="markAll('${esc(c.id)}','present')">✓ Всі</button>
     <button class="btn btn-xs" style="background:#FEE2E2;color:#991B1B;border:none" 
       onclick="deleteClient('${esc(c.id)}')" title="Видалити абонемент">🗑</button>
@@ -2983,6 +3772,7 @@ function navTo(el) {
   if (page==='cards') renderCardLinks();
   if (page==='salary')  { initSalaryMonths(); renderSalary(); }
   if (page==='booking') { loadOrders(); renderBooking(); }
+  if (page==='finance') { loadFinEntries(); initFinMonths(); renderFinance(); }
   if (page==='setup')   { loadGoogleCfg(); }
   closeSidebar();
 }
