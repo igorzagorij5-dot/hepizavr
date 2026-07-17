@@ -496,7 +496,9 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray);color:var(--
           <option value="ending">Закінчується (≤2)</option>
           <option value="expired">Вичерпані</option>
         </select>
-        <span class="cnt-badge" id="cntBadge">0</span>
+        <button id="showArchivedBtn" class="btn btn-out btn-sm" onclick="toggleArchived()"
+        style="font-size:11px">📦 Архів</button>
+      <span class="cnt-badge" id="cntBadge">0</span>
       </div>
       <div class="grid" id="cardsGrid"></div>
     </div>
@@ -1872,6 +1874,29 @@ function swapLessonGroup(clientId, lessonIdx) {
   const el = document.getElementById('cr-'+CSS.escape(clientId));
   if (el) el.outerHTML = buildCard(c);
   saveAll();
+}
+
+
+let showArchived = false;
+
+function toggleArchived() {
+  showArchived = !showArchived;
+  const btn = document.getElementById('showArchivedBtn');
+  if (btn) {
+    btn.textContent = showArchived ? '👁 Активні' : '📦 Архів';
+    btn.style.background = showArchived ? '#EDE9FE' : '';
+    btn.style.color = showArchived ? '#6D28D9' : '';
+  }
+  renderCards();
+}
+
+function archiveClient(clientId) {
+  const c = clients.find(x=>x.id===clientId);
+  if (!c) return;
+  c.archived = !c.archived;
+  saveAll();
+  renderAll();
+  toast(c.archived ? '📦 Заархівовано — зарплата рахується' : '📤 Відновлено', 'success');
 }
 
 function deleteClient(clientId) {
@@ -3521,10 +3546,11 @@ function renderAll() {
 }
 
 function renderStats() {
-  const tot=clients.length;
-  const act=clients.filter(c=>getStatus(c)==='active').length;
-  const end=clients.filter(c=>getStatus(c)==='ending').length;
-  const exp=clients.filter(c=>getStatus(c)==='expired').length;
+  const active_clients = clients.filter(c=>!c.archived);
+  const tot=active_clients.length;
+  const act=active_clients.filter(c=>getStatus(c)==='active').length;
+  const end=active_clients.filter(c=>getStatus(c)==='ending').length;
+  const exp=active_clients.filter(c=>getStatus(c)==='expired').length;
   document.getElementById('statsRow').innerHTML=`
     <div class="stat"><div class="v" style="color:var(--acc)">${tot}</div><div class="l">Всього</div></div>
     <div class="stat"><div class="v" style="color:var(--grn)">${act}</div><div class="l">Активних</div></div>
@@ -3550,8 +3576,13 @@ function renderCards() {
   const sl = search.toLowerCase();
   const st = (document.getElementById('fStatus')||{}).value||'';
   const filtered = clients.filter(c=>{
+    // Show archived only in archive mode, hide in normal mode
+    if (showArchived) {
+      if (!c.archived) return false;
+    } else {
+      if (c.archived) return false;
+    }
     if (currentDirFilter && currentDirFilter !== 'all') {
-      // Match strictly by dirKey only — prevents Гр.1 showing in Гр.2
       if (c.dirKey !== currentDirFilter) return false;
     }
     if (sl && !c.name.toLowerCase().includes(sl)) return false;
@@ -3662,8 +3693,12 @@ function buildCard(c) {
       onclick="transferGroup('${esc(c.id)}')" title="Перевести в іншу групу">🔄 Група</button>
     ` : ''}
     <button class="btn btn-acc btn-xs" onclick="markAll('${esc(c.id)}','present')">✓ Всі</button>
+    <button class="btn btn-xs" style="background:#F3F4F6;color:#6B7280;border:none"
+      onclick="archiveClient('${esc(c.id)}')" title="${c.archived?'Відновити':'Архівувати'}">
+      ${c.archived?'📤':'📦'}
+    </button>
     <button class="btn btn-xs" style="background:#FEE2E2;color:#991B1B;border:none" 
-      onclick="deleteClient('${esc(c.id)}')" title="Видалити абонемент">🗑</button>
+      onclick="deleteClient('${esc(c.id)}')" title="Видалити назавжди">🗑</button>
   </div>
 </div>`;
 }
