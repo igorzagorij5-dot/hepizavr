@@ -1379,24 +1379,28 @@ function showSalaryCard(encoded) {
 }
 
 async function loadPublicCard(cardFull) {
-  // cardFull may be "CARDKEY|BINID" or just "CARDKEY"
   const parts = cardFull.split('|');
   const cardId = parts[0];
   const binId  = parts[1] || localStorage.getItem('hp_binId');
+
+  // Show loading
+  document.getElementById('pubView').innerHTML =
+    '<div style="font-family:sans-serif;padding:60px;text-align:center;color:#9333EA;font-size:18px">🦕 Завантаження...</div>';
+
   try {
-    const apiKey = localStorage.getItem('hp_apiKey') || '';
-    
     let data = null;
 
     if (binId) {
-      // JSONBin public read — works WITHOUT master key if bin is public!
-      // Try without key first (public bin)
-      let res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`);
-      if (!res.ok && apiKey) {
-        // Try with key (private bin)
-        res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
-          headers: { 'X-Master-Key': apiKey }
-        });
+      // Try public read (no key needed)
+      let res = await fetch('https://api.jsonbin.io/v3/b/' + binId + '/latest');
+      if (!res.ok) {
+        // Try with key
+        const apiKey = localStorage.getItem('hp_apiKey') || '';
+        if (apiKey) {
+          res = await fetch('https://api.jsonbin.io/v3/b/' + binId + '/latest', {
+            headers: { 'X-Master-Key': apiKey }
+          });
+        }
       }
       if (res.ok) {
         const json = await res.json();
@@ -1405,21 +1409,26 @@ async function loadPublicCard(cardFull) {
     }
 
     if (!data) {
-      // Fallback to localStorage (only works on same device)
+      // Try localStorage
       const c = localStorage.getItem('hp_clients');
       const a = localStorage.getItem('hp_attend');
-      if (c) { data = { clients: JSON.parse(c), attend: JSON.parse(a||'{}') }; }
+      if (c) data = { clients: JSON.parse(c), attend: JSON.parse(a||'{}') };
     }
 
-    if (!data || !data.clients) {
-      document.getElementById('pubName').textContent = 'Картку не знайдено';
-      document.getElementById('pubDir').textContent = 'Зверніться до адміністратора клубу';
+    if (!data || !data.clients || !data.clients.length) {
+      document.getElementById('pubView').innerHTML =
+        '<div style="font-family:sans-serif;padding:60px;text-align:center">' +
+        '<div style="font-size:36px;margin-bottom:10px">🦕</div>' +
+        '<h2 style="color:#1a1a2e">Дані не знайдено</h2>' +
+        '<p style="color:#666">Зверніться до адміністратора клубу</p></div>';
       return;
     }
 
+    // Find client by encoded ID
     let client = data.clients.find(c => encodeId(c.id) === cardId);
+
+    // Fallback: decode name from cardId
     if (!client) {
-      // Fallback: decode cardId and search by name+dirKey
       try {
         const base64 = cardId.replace(/-/g,'+').replace(/_/g,'/');
         const pad = base64.length % 4 ? '='.repeat(4 - base64.length % 4) : '';
@@ -1427,38 +1436,44 @@ async function loadPublicCard(cardFull) {
         const bytes = new Uint8Array(binary.length);
         for (let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
         const decoded = new TextDecoder('utf-8').decode(bytes);
-        const parts = decoded.split('§');
-        const name = parts[0];
-        const dirKey = parts[1];
+        const nameParts = decoded.split('§');
+        const name = nameParts[0];
+        const dirKey = nameParts[1];
         if (name && name.length > 1) {
-          // Try exact name+dirKey match first
-          client = data.clients.find(c => c.name === name && (!dirKey || c.dirKey === dirKey));
-          // Then just name
+          client = data.clients.find(c => c.name === name && c.dirKey === dirKey);
           if (!client) client = data.clients.find(c => c.name === name);
         }
-      } catch(e) { console.error('decode error', e); }
+      } catch(e) {}
     }
+
     if (!client) {
-      document.getElementById('pubName').textContent = 'Картку не знайдено';
-      document.getElementById('pubDir').textContent = 'Посилання застаріло — попросіть нове у адміністратора';
+      document.getElementById('pubView').innerHTML =
+        '<div style="font-family:sans-serif;padding:60px;text-align:center">' +
+        '<div style="font-size:36px;margin-bottom:10px">🦕</div>' +
+        '<h2 style="color:#1a1a2e">Картку не знайдено</h2>' +
+        '<p style="color:#666">Посилання застаріло — попросіть нове у адміністратора</p></div>';
       return;
     }
 
-    // Set global data so buildClientCardHTML can access it
+    // Set global data for buildClientCardHTML
     clients = data.clients;
     attend  = data.attend || {};
 
-    // Replace entire page with HappyZavr card
+    // Render beautiful HappyZavr card
     const cardHtml = buildClientCardHTML(client);
     document.open();
     document.write(cardHtml);
     document.close();
 
   } catch(e) {
-    console.error('Public card error:', e);
-    document.getElementById('pubName').textContent = 'Помилка завантаження';
+    document.getElementById('pubView').innerHTML =
+      '<div style="font-family:sans-serif;padding:60px;text-align:center">' +
+      '<div style="font-size:36px;margin-bottom:10px">🦕</div>' +
+      '<h2 style="color:#1a1a2e">Помилка завантаження</h2>' +
+      '<p style="color:#666">' + e.message + '</p></div>';
   }
 }
+
 
 function renderPublicCard(c, att) {
   const present = Object.values(att).filter(v=>v==='present').length;
