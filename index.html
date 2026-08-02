@@ -1504,7 +1504,9 @@ function getStatus2(c, att) {
 }
 
 function encodeId(id) {
-  return btoa(unescape(encodeURIComponent(id))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+  const bytes = new TextEncoder().encode(id);
+  let binary = ''; bytes.forEach(b => binary += String.fromCharCode(b));
+  return btoa(binary).replace(/[+]/g,'-').replace(/[/]/g,'_').replace(/=/g,'');
 }
 
 // ─── CARD HTML GENERATOR ────────────────────────────────────────────────────
@@ -1527,49 +1529,45 @@ function buildClientCardHTML(c) {
                : status==='ending'  ? 'linear-gradient(135deg,#FFE082,#FFA726)'
                : 'linear-gradient(135deg,#ff9a9e,#e57373)';
   const stColor= status==='active'  ? '#1B5E20'
-               : status==='ending'  ? '#4E2A00'
-               : '#7F0000';
+               : status==='ending'  ? '#4E2A00' : '#7F0000';
   const remColor= remain<=0 ? '#C62828' : remain<=2 ? '#E65100' : '#6A1B9A';
   const barColor= remain<=0 ? '#e57373' : remain<=2 ? '#FFB74D' : '#CE93D8';
 
-  const dots = c.lessonDates.map((iso,i) => {
+  const dots = (c.lessonDates||[]).map((iso,i) => {
     const s = att[i] || '';
-    const [y,mo,d] = iso.split('-');
-    const icon  = s==='present' ? '✓' : s==='absent' ? '✗' : String(i+1);
-    const bg    = s==='present' ? 'linear-gradient(135deg,#a8edab,#4CAF50)'
-                : s==='absent'  ? 'linear-gradient(135deg,#ff9a9e,#e53935)'
-                : 'linear-gradient(135deg,#f3e5f5,#e1bee7)';
-    const color = s==='present' ? '#fff' : s==='absent' ? '#fff' : '#9C27B0';
-    const shadow= s==='present' ? '0 2px 8px rgba(76,175,80,.4)'
-                : s==='absent'  ? '0 2px 8px rgba(229,57,53,.4)'
-                : '0 2px 6px rgba(156,39,176,.15)';
+    const isSlot = !iso || iso.startsWith('slot-');
+    const parts = isSlot ? [] : iso.split('-');
+    const [y,mo,d] = parts.length===3 ? parts : ['','',''];
+    const dateStr = isSlot ? '' : (d+'.'+mo);
+    const icon = s==='present'?'✓':s==='absent'?'✗':'';
+    const bg = s==='present' ? 'linear-gradient(135deg,#a8edab,#4CAF50)'
+             : s==='absent'  ? 'linear-gradient(135deg,#ff9a9e,#e53935)'
+             : 'linear-gradient(135deg,#f3e5f5,#e1bee7)';
+    const color = s==='present'?'#fff':s==='absent'?'#fff':'#9C27B0';
     return `<div style="width:40px;height:40px;border-radius:12px;background:${bg};
       display:flex;align-items:center;justify-content:center;flex-direction:column;
-      font-size:11px;font-weight:800;color:${color};box-shadow:${shadow}">
-      <span>${icon}</span>
-      <span style="font-size:7px;opacity:.85;margin-top:1px">${d}.${mo}</span>
+      font-size:11px;font-weight:800;color:${color}">
+      <span>${icon||(i+1)}</span>
+      <span style="font-size:7px;opacity:.85">${dateStr}</span>
     </div>`;
   }).join('');
 
   const warnBlock = status==='ending'
     ? `<div style="background:linear-gradient(135deg,#FFF9C4,#FFF176);color:#4E2A00;
         padding:10px 16px;border-radius:12px;font-size:13px;font-weight:700;
-        text-align:center;margin-bottom:14px;box-shadow:0 2px 8px rgba(255,193,7,.3)">
-        🦕 Залишилось лише ${remain} заняття — поновіть абонемент!
-      </div>` : '';
+        text-align:center;margin-bottom:14px">
+        🦕 Залишилось лише ${remain} заняття — поновіть абонемент!</div>` : '';
 
-  // Photo section
   const photoSection = photo
     ? `<div style="width:100%;height:220px;overflow:hidden;position:relative">
         <img src="${photo}" style="width:100%;height:100%;object-fit:cover;object-position:center 15%">
         <div style="position:absolute;bottom:0;left:0;right:0;height:60px;
           background:linear-gradient(transparent,#fff)"></div>
       </div>`
-    : `<div style="width:100%;height:120px;
+    : `<div style="width:100%;height:100px;
         background:linear-gradient(135deg,#f472b6 0%,#c084fc 50%,#818cf8 100%);
-        display:flex;align-items:center;justify-content:center;font-size:36px">
-        🦕⭐🦕
-      </div>`;
+        display:flex;align-items:center;justify-content:center;font-size:32px">
+        🦕⭐🦕</div>`;
 
   const updatedAt = new Date().toLocaleString('uk-UA');
 
@@ -1582,88 +1580,62 @@ function buildClientCardHTML(c) {
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Nunito',sans-serif;
-  background:linear-gradient(160deg,#FFDEE9 0%,#B5DBFF 50%,#e8d5f5 100%);
+body{font-family:'Nunito',sans-serif;background:linear-gradient(160deg,#FFDEE9,#B5DBFF,#e8d5f5);
   min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
 .card{width:100%;max-width:390px;border-radius:28px;overflow:hidden;
   box-shadow:0 20px 60px rgba(180,100,220,.25);background:#fff}
-
-/* INFO BLOCK */
-.info-block{padding:18px 20px 14px;text-align:center;
-  background:linear-gradient(135deg,#f9f0ff,#fff0f9)}
+.info-block{padding:16px 20px 12px;text-align:center;background:linear-gradient(135deg,#f9f0ff,#fff0f9)}
 .club-logo{font-size:12px;font-weight:800;letter-spacing:2px;text-transform:uppercase;
-  color:#9333EA;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:5px}
+  color:#9333EA;margin-bottom:6px}
 .child-name{font-size:22px;font-weight:900;color:#1a1a2e;margin-bottom:6px}
 .dir-badge{display:inline-block;background:linear-gradient(135deg,#f0abfc,#c084fc);
-  color:#fff;border-radius:20px;padding:4px 14px;font-size:13px;font-weight:700;margin-bottom:8px}
+  color:#fff;border-radius:20px;padding:4px 14px;font-size:13px;font-weight:700;margin-bottom:6px}
 .dates-tag{font-size:12px;color:#7C3AED;font-weight:600}
-
-/* STATS ROW */
 .stats-row{display:flex;align-items:center;gap:12px;padding:14px 20px;
-  border-top:1px solid #f3e8ff;border-bottom:1px solid #f3e8ff;
-  background:#fdf4ff}
-.remain-box{text-align:center;flex-shrink:0}
+  border-top:1px solid #f3e8ff;border-bottom:1px solid #f3e8ff;background:#fdf4ff}
 .remain-num{font-size:48px;font-weight:900;line-height:1;color:${remColor}}
 .remain-lbl{font-size:11px;color:#9333EA;font-weight:700;margin-top:2px}
-.prog-box{flex:1}
-.prog-row{display:flex;justify-content:space-between;margin-bottom:6px;align-items:center}
-.prog-lbl{font-size:12px;color:#6B7280;font-weight:600}
-.prog-num{font-size:13px;font-weight:800;color:#4C1D95}
 .prog-bg{height:10px;background:#F3E8FF;border-radius:5px;overflow:hidden}
 .prog-fill{height:100%;border-radius:5px;background:${barColor};width:${pct}%}
-
-/* BODY */
-.body{padding:16px 20px 20px}
+.body{padding:14px 20px 18px}
 .status{padding:10px;border-radius:14px;text-align:center;font-size:14px;font-weight:800;
-  margin-bottom:14px;background:${stBg};color:${stColor};
-  box-shadow:0 3px 10px rgba(0,0,0,.1)}
-.lessons-hdr{font-size:12px;font-weight:800;color:#9333EA;text-transform:uppercase;
-  letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:5px}
+  margin-bottom:14px;background:${stBg};color:${stColor}}
 .dots{display:flex;flex-wrap:wrap;gap:7px}
-
-/* FOOTER */
-.footer{background:linear-gradient(135deg,#fdf4ff,#ede9fe);
-  padding:12px 20px;text-align:center;font-size:11px;color:#9333EA;font-weight:600;
-  border-top:2px solid #e9d5ff}
+.footer{background:linear-gradient(135deg,#fdf4ff,#ede9fe);padding:12px 20px;
+  text-align:center;font-size:11px;color:#9333EA;font-weight:600;border-top:2px solid #e9d5ff}
+@keyframes twinkle{0%,100%{opacity:.2}50%{opacity:.6}}
+.star{display:inline-block;animation:twinkle 2s infinite}
 </style>
 </head>
 <body>
 <div class="card">
-
-  <!-- 1. ФОТО -->
   ${photoSection}
-
-  <!-- 2. ІНФОРМАЦІЯ -->
   <div class="info-block">
-    <div class="club-logo">🦕 HappyZavr</div>
+    <div class="club-logo"><span class="star">⭐</span> HappyZavr <span class="star" style="animation-delay:.5s">⭐</span></div>
     <div class="child-name">${c.name}</div>
     <div class="dir-badge">🎯 ${c.direction}</div>
-    <div class="dates-tag">📅 ${c.startDate} → ${c.endDate}${cross}</div>
+    <div class="dates-tag">📅 ${c.startDate||'Інд.'} ${c.endDate?' → '+c.endDate+cross:''}</div>
   </div>
-
-  <!-- 3. СТАТИСТИКА В ОДИН РЯД -->
   <div class="stats-row">
-    <div class="remain-box">
+    <div style="text-align:center;flex-shrink:0">
       <div class="remain-num">${remain}</div>
       <div class="remain-lbl">залишилось<br>занять</div>
     </div>
-    <div class="prog-box">
-      <div class="prog-row">
-        <span class="prog-lbl">✅ Відвідано</span>
-        <span class="prog-num">${present} з ${total}</span>
+    <div style="flex:1">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:12px">
+        <span style="color:#6B7280;font-weight:600">✅ Відвідано</span>
+        <span style="font-weight:800;color:#4C1D95">${present} з ${total}</span>
       </div>
       <div class="prog-bg"><div class="prog-fill"></div></div>
     </div>
   </div>
-
-  <!-- 4. ДАЛІ ЯК ЗВИЧАЙНО -->
   <div class="body">
     <div class="status">${stText}</div>
     ${warnBlock}
-    <div class="lessons-hdr">🗓️ Відвідуваність</div>
+    <div style="font-size:12px;font-weight:800;color:#9333EA;text-transform:uppercase;
+      letter-spacing:1px;margin-bottom:10px">🗓️ Відвідуваність</div>
     <div class="dots">${dots}</div>
   </div>
-
   <div class="footer">
     🦕 HappyZavr · Картка оновлюється автоматично<br>
     <span style="font-size:10px;opacity:.7">Оновлено: ${updatedAt}</span>
@@ -1672,6 +1644,7 @@ body{font-family:'Nunito',sans-serif;
 </body>
 </html>`;
 }
+
 function getCardDataUrl(c) {
   const html = buildClientCardHTML(c);
   return 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
