@@ -1419,18 +1419,24 @@ async function loadPublicCard(cardFull) {
 
     let client = data.clients.find(c => encodeId(c.id) === cardId);
     if (!client) {
-      // Try to find by partial match (in case ID changed slightly)
-      // Decode cardId and try to extract name
+      // Fallback: decode cardId and search by name+dirKey
       try {
         const base64 = cardId.replace(/-/g,'+').replace(/_/g,'/');
         const pad = base64.length % 4 ? '='.repeat(4 - base64.length % 4) : '';
-        const decoded = atob(base64 + pad);
-        // ID format: name§dirKey§timestamp — extract name
-        const name = decoded.split('§')[0];
+        const binary = atob(base64 + pad);
+        const bytes = new Uint8Array(binary.length);
+        for (let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
+        const decoded = new TextDecoder('utf-8').decode(bytes);
+        const parts = decoded.split('§');
+        const name = parts[0];
+        const dirKey = parts[1];
         if (name && name.length > 1) {
-          client = data.clients.find(c => c.name === name);
+          // Try exact name+dirKey match first
+          client = data.clients.find(c => c.name === name && (!dirKey || c.dirKey === dirKey));
+          // Then just name
+          if (!client) client = data.clients.find(c => c.name === name);
         }
-      } catch(e) {}
+      } catch(e) { console.error('decode error', e); }
     }
     if (!client) {
       document.getElementById('pubName').textContent = 'Картку не знайдено';
