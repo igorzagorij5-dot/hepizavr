@@ -1169,11 +1169,12 @@ window.onload = async function() {
     document.getElementById('pubView').style.display   = 'block';
     showSalaryCard(encoded);
   } else if (hash.startsWith('#card=')) {
-    const cardId = hash.slice(6);
+    const cardFull = hash.slice(6); // may be "CARDKEY|BINID"
+    const cardId = cardFull.split('|')[0]; // just the card key
     document.getElementById('adminView').style.display = 'none';
     document.getElementById('pubView').style.display   = 'block';
-    await loadPublicCard(cardId);
-    setInterval(() => loadPublicCard(cardId), 30000);
+    await loadPublicCard(cardFull); // pass full to extract binId
+    setInterval(() => loadPublicCard(cardFull), 30000);
   } else {
     // Also check query params for backwards compat
     const params = new URLSearchParams(window.location.search);
@@ -1197,15 +1198,17 @@ window.onload = async function() {
 // PUBLIC CARD
 // ═══════════════════════════════════════════════════════
 async function showPricePage(encoded) {
-  document.title = '🏷️ HappyZavr — Прайс';
+  document.title = 'HappyZavr — Прайс';
   document.getElementById('pubView').innerHTML =
-    '<div style="font-family:sans-serif;padding:40px;text-align:center;color:#9333EA">🦕 Завантаження...</div>';
+    '<div style="font-family:sans-serif;padding:60px;text-align:center;color:#9333EA;font-size:18px">🦕 Завантаження...</div>';
 
   let item = null;
 
-  // Check if format is "itemId|binId" (short URL)
   if (encoded.includes('|')) {
-    const [itemId, binId] = encoded.split('|');
+    // Short format: itemId|binId
+    const parts = encoded.split('|');
+    const itemId = parts[0];
+    const binId  = parts[1];
     try {
       const res = await fetch('https://api.jsonbin.io/v3/b/' + binId + '/latest');
       if (res.ok) {
@@ -1214,95 +1217,99 @@ async function showPricePage(encoded) {
           item = data.priceItems.find(x => x.id === itemId);
         }
       }
-    } catch(e) { console.error('Price load error:', e); }
+    } catch(e) { console.error(e); }
   } else {
-    // Old format: full encoded data
+    // Full encoded data
     try {
       const base64 = encoded.replace(/-/g,'+').replace(/_/g,'/');
-      const pad = base64.length%4 ? '='.repeat(4-base64.length%4) : '';
-      const bytes = new Uint8Array(atob(base64+pad).split('').map(c=>c.charCodeAt(0)));
+      const pad = base64.length % 4 ? '='.repeat(4 - base64.length % 4) : '';
+      const bytes = new Uint8Array(atob(base64 + pad).split('').map(c => c.charCodeAt(0)));
       item = JSON.parse(new TextDecoder('utf-8').decode(bytes));
-    } catch(e) {}
+    } catch(e) { console.error(e); }
   }
 
   if (!item) {
     document.getElementById('pubView').innerHTML =
-      '<div style="font-family:sans-serif;padding:40px;text-align:center">Сторінку не знайдено</div>';
+      '<div style="font-family:sans-serif;padding:60px;text-align:center;font-size:16px;color:#666">Сторінку не знайдено</div>';
     return;
   }
 
-  try {
-    const [c1,c2] = {'pink':['#f472b6','#c084fc'],'blue':['#60A5FA','#3B82F6'],
-      'green':['#34D399','#059669'],'orange':['#FBBF24','#F59E0B'],
-      'purple':['#818cf8','#6366f1']}[item.color||'pink'];
+  const colorMap = {
+    pink:   ['#f472b6','#c084fc'],
+    blue:   ['#60A5FA','#3B82F6'],
+    green:  ['#34D399','#059669'],
+    orange: ['#FBBF24','#F59E0B'],
+    purple: ['#818cf8','#6366f1'],
+  };
+  const [c1,c2] = colorMap[item.color||'pink'];
 
-    const photosHtml = item.photos && item.photos.length
-      ? `<div style="display:grid;grid-template-columns:${item.photos.length>1?'1fr 1fr':'1fr'};
-          gap:3px;height:260px;overflow:hidden;border-radius:20px 20px 0 0">
-          ${item.photos.slice(0,4).map(p=>`<img src="${p}" style="width:100%;height:100%;object-fit:cover">`).join('')}
-        </div>`
-      : `<div style="height:200px;background:linear-gradient(135deg,${c1},${c2});
-          border-radius:20px 20px 0 0;display:flex;align-items:center;justify-content:center;font-size:64px">💃</div>`;
+  const photosHtml = item.photos && item.photos.length
+    ? `<div style="display:grid;grid-template-columns:${item.photos.length > 1 ? '1fr 1fr' : '1fr'};
+        gap:3px;height:260px;overflow:hidden;border-radius:20px 20px 0 0">
+        ${item.photos.slice(0,4).map(p =>
+          `<img src="${p}" style="width:100%;height:100%;object-fit:cover">`
+        ).join('')}
+      </div>`
+    : `<div style="height:180px;background:linear-gradient(135deg,${c1},${c2});
+        border-radius:20px 20px 0 0;display:flex;align-items:center;justify-content:center;font-size:64px">💃</div>`;
 
-    document.getElementById('pubView').innerHTML = `
-      <div style="font-family:'Segoe UI',Arial,sans-serif;min-height:100vh;
-        background:linear-gradient(160deg,#FFDEE9,#B5DBFF,#e8d5f5);padding:16px;
-        display:flex;align-items:flex-start;justify-content:center">
-        <div style="background:#fff;border-radius:20px;width:100%;max-width:440px;
-          box-shadow:0 20px 60px rgba(0,0,0,.2);overflow:hidden;margin:auto">
+  document.getElementById('pubView').innerHTML = `
+    <div style="font-family:'Segoe UI',Arial,sans-serif;min-height:100vh;
+      background:linear-gradient(160deg,#FFDEE9,#B5DBFF,#e8d5f5);padding:16px;
+      display:flex;align-items:flex-start;justify-content:center">
+      <div style="background:#fff;border-radius:20px;width:100%;max-width:440px;
+        box-shadow:0 20px 60px rgba(0,0,0,.2);overflow:hidden;margin:auto">
 
-          ${photosHtml}
+        ${photosHtml}
 
-          <div style="padding:22px">
-            <div style="display:inline-block;background:linear-gradient(135deg,${c1},${c2});
-              color:#fff;padding:6px 16px;border-radius:20px;font-size:14px;font-weight:800;margin-bottom:12px">
-              🦕 HappyZavr
-            </div>
-            <h1 style="font-size:24px;font-weight:900;color:#1a1a2e;margin-bottom:10px">${item.name}</h1>
-            <p style="font-size:14px;color:#546E7A;line-height:1.6;margin-bottom:16px">${item.desc||''}</p>
+        <div style="padding:22px">
+          <div style="display:inline-block;background:linear-gradient(135deg,${c1},${c2});
+            color:#fff;padding:6px 16px;border-radius:20px;font-size:14px;font-weight:800;margin-bottom:12px">
+            🦕 HappyZavr
+          </div>
+          <h1 style="font-size:24px;font-weight:900;color:#1a1a2e;margin-bottom:10px">${item.name}</h1>
+          <p style="font-size:14px;color:#546E7A;line-height:1.6;margin-bottom:16px">${item.desc||''}</p>
 
-            ${item.teacher?`<div style="background:#F5F3FF;border-radius:12px;padding:14px;margin-bottom:14px">
-              <div style="font-size:12px;font-weight:700;color:#6D28D9;text-transform:uppercase;
-                letter-spacing:.5px;margin-bottom:6px">👤 Викладач</div>
-              <div style="font-size:15px;font-weight:800;color:#1a1a2e">${item.teacher}</div>
-              ${item.teacherDesc?`<div style="font-size:13px;color:#6B7280;margin-top:2px">${item.teacherDesc}</div>`:''}
-            </div>`:''}
+          ${item.teacher ? `<div style="background:#F5F3FF;border-radius:12px;padding:14px;margin-bottom:14px">
+            <div style="font-size:12px;font-weight:700;color:#6D28D9;text-transform:uppercase;
+              letter-spacing:.5px;margin-bottom:6px">👤 Викладач</div>
+            <div style="font-size:15px;font-weight:800;color:#1a1a2e">${item.teacher}</div>
+            ${item.teacherDesc ? `<div style="font-size:13px;color:#6B7280;margin-top:2px">${item.teacherDesc}</div>` : ''}
+          </div>` : ''}
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
-              ${item.schedule?`<div style="background:#F0FDF4;border-radius:10px;padding:12px;text-align:center">
-                <div style="font-size:11px;font-weight:700;color:#059669;margin-bottom:4px">📅 ГРАФІК</div>
-                <div style="font-size:13px;font-weight:700;color:#1a1a2e">${item.schedule}</div>
-              </div>`:''}
-              ${item.age?`<div style="background:#FFF7ED;border-radius:10px;padding:12px;text-align:center">
-                <div style="font-size:11px;font-weight:700;color:#EA580C;margin-bottom:4px">🎂 ВІК</div>
-                <div style="font-size:13px;font-weight:700;color:#1a1a2e">${item.age}</div>
-              </div>`:''}
-            </div>
-
-            ${item.price?`<div style="background:linear-gradient(135deg,${c1}22,${c2}22);
-              border:2px solid ${c1};border-radius:14px;padding:16px;text-align:center;margin-bottom:16px">
-              <div style="font-size:13px;color:#6B7280;margin-bottom:4px">Абонемент</div>
-              <div style="font-size:36px;font-weight:900;color:${c1}">${item.price.toLocaleString('uk')}₴</div>
-              ${item.lessons?`<div style="font-size:13px;color:#6B7280">${item.lessons} занять</div>`:''}
-            </div>`:''}
-
-            <a href="https://t.me/happyzavr" style="display:block;text-align:center;
-              background:linear-gradient(135deg,${c1},${c2});color:#fff;padding:14px;
-              border-radius:14px;font-size:15px;font-weight:800;text-decoration:none">
-              📱 Записатись
-            </a>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+            ${item.schedule ? `<div style="background:#F0FDF4;border-radius:10px;padding:12px;text-align:center">
+              <div style="font-size:11px;font-weight:700;color:#059669;margin-bottom:4px">📅 ГРАФІК</div>
+              <div style="font-size:13px;font-weight:700;color:#1a1a2e">${item.schedule}</div>
+            </div>` : ''}
+            ${item.age ? `<div style="background:#FFF7ED;border-radius:10px;padding:12px;text-align:center">
+              <div style="font-size:11px;font-weight:700;color:#EA580C;margin-bottom:4px">🎂 ВІК</div>
+              <div style="font-size:13px;font-weight:700;color:#1a1a2e">${item.age}</div>
+            </div>` : ''}
           </div>
 
-          <div style="background:#F5F3FF;padding:12px 20px;text-align:center;
-            font-size:11px;color:#9333EA;font-weight:600">
-            🦕 HappyZavr · Дитячий клуб
-          </div>
+          ${item.price ? `<div style="background:linear-gradient(135deg,${c1}22,${c2}22);
+            border:2px solid ${c1};border-radius:14px;padding:16px;text-align:center;margin-bottom:16px">
+            <div style="font-size:13px;color:#6B7280;margin-bottom:4px">Абонемент</div>
+            <div style="font-size:36px;font-weight:900;color:${c1}">${item.price.toLocaleString('uk')}₴</div>
+            ${item.lessons ? `<div style="font-size:13px;color:#6B7280">${item.lessons} занять</div>` : ''}
+          </div>` : ''}
+
+          <a href="https://t.me/" style="display:block;text-align:center;
+            background:linear-gradient(135deg,${c1},${c2});color:#fff;padding:14px;
+            border-radius:14px;font-size:15px;font-weight:800;text-decoration:none">
+            📱 Записатись
+          </a>
         </div>
-      </div>`;
-  } catch(e) {
-    document.getElementById('pubView').innerHTML = '<div style="padding:40px;text-align:center;font-family:sans-serif">Помилка завантаження сторінки</div>';
-  }
+
+        <div style="background:#F5F3FF;padding:12px 20px;text-align:center;
+          font-size:11px;color:#9333EA;font-weight:600">
+          🦕 HappyZavr · Дитячий клуб
+        </div>
+      </div>
+    </div>`;
 }
+
 
 function showSalaryCard(encoded) {
   document.getElementById('adminView').style.display = 'none';
@@ -1371,20 +1378,12 @@ function showSalaryCard(encoded) {
   }
 }
 
-async function loadPublicCard(cardId) {
+async function loadPublicCard(cardFull) {
+  // cardFull may be "CARDKEY|BINID" or just "CARDKEY"
+  const parts = cardFull.split('|');
+  const cardId = parts[0];
+  const binId  = parts[1] || localStorage.getItem('hp_binId');
   try {
-    // The binId is encoded in the card URL itself after the | separator
-    // Format: cardKey = encodeId(clientId) + '|' + binId
-    // OR just cardKey = encodeId(clientId) and binId from URL param
-    
-    // Check if binId is passed as separate URL param
-    const params = new URLSearchParams(window.location.search);
-    // Extract binId from hash if present: #card=CARDKEY|BINID
-    const hashParts = (window.location.hash.slice(1)||'').split('|');
-    const hashBinId = hashParts.length > 1 ? hashParts[1] : null;
-    const urlBinId = new URLSearchParams(window.location.search).get('bin');
-    
-    const binId = hashBinId || urlBinId || localStorage.getItem('hp_binId');
     const apiKey = localStorage.getItem('hp_apiKey') || '';
     
     let data = null;
@@ -3670,33 +3669,34 @@ function renderPriceGrid() {
   }).join('');
 }
 
-function previewPricePage(id) {
+function getPriceUrl(id) {
+  const binId = cfg.binId || localStorage.getItem('hp_binId');
+  if (binId) {
+    return 'https://igorzagorij5-dot.github.io/hepizavr/#price=' + id + '|' + binId;
+  }
+  // Fallback: full encoded data
   const item = priceItems.find(x=>x.id===id);
-  if (!item) return;
+  if (!item) return '';
   const bytes = new TextEncoder().encode(JSON.stringify(item));
   let binary = ''; bytes.forEach(b => binary += String.fromCharCode(b));
-  const encoded = btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
-  const url = 'https://igorzagorij5-dot.github.io/hepizavr/#price=' + encoded;
-  // Use anchor tag to avoid popup blocker
+  return 'https://igorzagorij5-dot.github.io/hepizavr/#price=' +
+    btoa(binary).replace(/[+]/g,'-').replace(/[/]/g,'_').replace(/=/g,'');
+}
+
+function previewPricePage(id) {
+  const url = getPriceUrl(id);
+  if (!url) return;
   const a = document.createElement('a');
-  a.href = url;
-  a.target = '_blank';
-  a.rel = 'noopener';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  a.href = url; a.target = '_blank'; a.rel = 'noopener';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
 function sharePricePage(id) {
-  const item = priceItems.find(x=>x.id===id);
-  if (!item) return;
-  // Encode item data in hash
-  const bytes = new TextEncoder().encode(JSON.stringify(item));
-  let binary = ''; bytes.forEach(b => binary += String.fromCharCode(b));
-  const encoded = btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
-  const url = 'https://igorzagorij5-dot.github.io/hepizavr/#price=' + encoded;
+  const url = getPriceUrl(id);
+  if (!url) return;
   copyText(url);
-  toast('🔗 Ссилку скопійовано!', 'success');
+  const isShort = url.includes('|');
+  toast(isShort ? '🔗 Коротка ссилка скопійована!' : '🔗 Ссилку скопійовано (налаштуй хмару для короткої)', 'success');
 }
 
 function uploadPhoto(clientId, input) {
@@ -4253,12 +4253,18 @@ function openCard(id) {
 function openClientCard(id) {
   const c = clients.find(x=>x.id===id);
   if (!c) return;
-  const win = window.open('', '_blank');
-  if (win) {
-    win.document.write(buildClientCardHTML(c));
-    win.document.close();
+  const binId = cfg.binId || localStorage.getItem('hp_binId');
+  if (binId) {
+    // Open via real URL with JSONBin — same link parents get
+    const url = 'https://igorzagorij5-dot.github.io/hepizavr/#card=' + encodeId(c.id) + '|' + binId;
+    const a = document.createElement('a');
+    a.href = url; a.target = '_blank'; a.rel = 'noopener';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
   } else {
-    toast('⚠️ Дозволь спливаючі вікна в браузері або використай вкладку Посилання', 'warn');
+    // No cloud — open embedded HTML
+    const win = window.open('', '_blank');
+    if (win) { win.document.write(buildClientCardHTML(c)); win.document.close(); }
+    else toast('⚠️ Налаштуй хмарне збереження для стабільних ссилок', 'warn');
   }
 }
 
