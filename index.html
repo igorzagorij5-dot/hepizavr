@@ -526,7 +526,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray);color:var(--
 
   <!-- ADD CLIENT MODAL -->
   <div id="addModal" style="display:none;position:fixed;inset:0;z-index:500;
-    background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;padding:16px">
+    background:rgba(0,0,0,.5);align-items:center;justify-content:center;padding:16px">
     <div style="background:#fff;border-radius:20px;width:100%;max-width:480px;
       box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden">
       <div style="background:linear-gradient(135deg,#f472b6,#c084fc);padding:20px 24px;color:#fff;
@@ -1419,18 +1419,24 @@ async function loadPublicCard(cardFull) {
 
     let client = data.clients.find(c => encodeId(c.id) === cardId);
     if (!client) {
-      // Try to find by partial match (in case ID changed slightly)
-      // Decode cardId and try to extract name
+      // Fallback: decode cardId and search by name+dirKey
       try {
         const base64 = cardId.replace(/-/g,'+').replace(/_/g,'/');
         const pad = base64.length % 4 ? '='.repeat(4 - base64.length % 4) : '';
-        const decoded = atob(base64 + pad);
-        // ID format: name§dirKey§timestamp — extract name
-        const name = decoded.split('§')[0];
+        const binary = atob(base64 + pad);
+        const bytes = new Uint8Array(binary.length);
+        for (let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
+        const decoded = new TextDecoder('utf-8').decode(bytes);
+        const parts = decoded.split('§');
+        const name = parts[0];
+        const dirKey = parts[1];
         if (name && name.length > 1) {
-          client = data.clients.find(c => c.name === name);
+          // Try exact name+dirKey match first
+          client = data.clients.find(c => c.name === name && (!dirKey || c.dirKey === dirKey));
+          // Then just name
+          if (!client) client = data.clients.find(c => c.name === name);
         }
-      } catch(e) {}
+      } catch(e) { console.error('decode error', e); }
     }
     if (!client) {
       document.getElementById('pubName').textContent = 'Картку не знайдено';
@@ -1860,7 +1866,7 @@ function setDirTab(el) {
 
 function openAddModal() {
   const m = document.getElementById('addModal');
-  m.style.display = 'flex';
+  m.style.cssText = 'display:flex;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.5);align-items:center;justify-content:center;padding:16px';
   // Set today as default date
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('mDate').value = today;
@@ -1892,9 +1898,14 @@ function updateModalFields() {
   }
 }
 
+let _addingClient = false;
 function addClientFromModal() {
+  if (_addingClient) return;
+  _addingClient = true;
+  setTimeout(() => { _addingClient = false; }, 2000);
+
   const name = document.getElementById('mName').value.trim();
-  if (!name) { toast('⚠️ Введи ФІО дитини', 'warn'); return; }
+  if (!name) { _addingClient = false; toast('⚠️ Введи ФІО дитини', 'warn'); return; }
 
   const dirKey = document.getElementById('mDir').value;
   const cfg    = DIR_CONFIG[dirKey];
@@ -1981,8 +1992,9 @@ function addClientFromModal() {
 
   clients.push(client);
   attend[client.id] = {};
-  autoSave();
+  _addingClient = false;
   closeAddModal();
+  autoSave();
   document.getElementById('mName').value = '';
   showMain();
   renderAll();
@@ -3712,6 +3724,23 @@ function uploadPhoto(clientId, input) {
   reader.readAsDataURL(file);
 }
 
+let autoSaveTimer = null;
+
+function autoSave() {
+  localStorage.setItem('hp_clients', JSON.stringify(clients));
+  localStorage.setItem('hp_attend',  JSON.stringify(attend));
+  localStorage.setItem('hp_orders',  JSON.stringify(orders));
+  localStorage.setItem('hp_fin_entries', JSON.stringify(finEntries));
+  clearTimeout(autoSaveTimer);
+  setSyncStatus('spin', 'Зберігаємо...');
+  autoSaveTimer = setTimeout(() => {
+    const key   = cfg.apiKey || localStorage.getItem('hp_apiKey');
+    const binId = cfg.binId  || localStorage.getItem('hp_binId');
+    if (key && binId) pushCloud();
+    else setSyncStatus('ok', 'Локально');
+  }, 1500);
+}
+
 function saveAll() {
   localStorage.setItem('hp_clients', JSON.stringify(clients));
   localStorage.setItem('hp_attend',  JSON.stringify(attend));
@@ -4253,12 +4282,18 @@ function openCard(id) {
 function openClientCard(id) {
   const c = clients.find(x=>x.id===id);
   if (!c) return;
-  const win = window.open('', '_blank');
-  if (win) {
-    win.document.write(buildClientCardHTML(c));
-    win.document.close();
+  const binId = cfg.binId || localStorage.getItem('hp_binId');
+  if (binId) {
+    // Open via real URL with JSONBin — same link parents get
+    const url = 'https://igorzagorij5-dot.github.io/hepizavr/#card=' + encodeId(c.id) + '|' + binId;
+    const a = document.createElement('a');
+    a.href = url; a.target = '_blank'; a.rel = 'noopener';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
   } else {
-    toast('⚠️ Дозволь спливаючі вікна в браузері або використай вкладку Посилання', 'warn');
+    // No cloud — open embedded HTML
+    const win = window.open('', '_blank');
+    if (win) { win.document.write(buildClientCardHTML(c)); win.document.close(); }
+    else toast('⚠️ Налаштуй хмарне збереження для стабільних ссилок', 'warn');
   }
 }
 
