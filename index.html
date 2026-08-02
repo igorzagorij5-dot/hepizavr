@@ -1444,12 +1444,15 @@ async function loadPublicCard(cardFull) {
       return;
     }
 
-    const att = (data.attend && data.attend[client.id]) ? data.attend[client.id] : {};
-    renderPublicCard(client, att);
+    // Set global data so buildClientCardHTML can access it
+    clients = data.clients;
+    attend  = data.attend || {};
 
-    const now = new Date();
-    document.getElementById('pubUpdated').textContent =
-      'Оновлено: ' + now.toLocaleTimeString('uk-UA');
+    // Replace entire page with HappyZavr card
+    const cardHtml = buildClientCardHTML(client);
+    document.open();
+    document.write(cardHtml);
+    document.close();
 
   } catch(e) {
     console.error('Public card error:', e);
