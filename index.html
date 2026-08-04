@@ -3710,15 +3710,55 @@ async function makeBinPublic() {
   const binId = cfg.binId  || localStorage.getItem('hp_binId');
   if (!key || !binId) return;
   try {
+    // JSONBin v3: update privacy via meta endpoint
     const res = await fetch('https://api.jsonbin.io/v3/b/' + binId + '/meta', {
       method: 'PUT',
       headers: {
         'X-Master-Key': key,
-        'X-Bin-Private': 'false'
+        'X-Bin-Private': 'false',
+        'Content-Type': 'application/json'
       }
     });
-    if (res.ok) console.log('Bin set to public');
-  } catch(e) { console.error('makeBinPublic error:', e); }
+    console.log('makeBinPublic status:', res.status);
+    if (!res.ok) {
+      // Try alternative: recreate bin as public
+      const dataRes = await fetch('https://api.jsonbin.io/v3/b/' + binId + '/latest', {
+        headers: { 'X-Master-Key': key }
+      });
+      if (dataRes.ok) {
+        const data = (await dataRes.json()).record;
+        // Delete old bin
+        await fetch('https://api.jsonbin.io/v3/b/' + binId, {
+          method: 'DELETE',
+          headers: { 'X-Master-Key': key }
+        });
+        // Create new public bin
+        const newRes = await fetch('https://api.jsonbin.io/v3/b', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Master-Key': key,
+            'X-Bin-Name': 'hepizavr-data',
+            'X-Bin-Private': 'false'
+          },
+          body: JSON.stringify(data)
+        });
+        if (newRes.ok) {
+          const newJson = await newRes.json();
+          const newBinId = newJson.metadata.id;
+          cfg.binId = newBinId;
+          localStorage.setItem('hp_binId', newBinId);
+          document.getElementById('binId').value = newBinId;
+          toast('✅ Новий публічний бін: ' + newBinId, 'success');
+        }
+      }
+    } else {
+      toast('✅ Бін тепер публічний!', 'success');
+    }
+  } catch(e) {
+    console.error('makeBinPublic error:', e);
+    toast('⚠️ Помилка: ' + e.message, 'warn');
+  }
 }
 
 function uploadPhoto(clientId, input) {
