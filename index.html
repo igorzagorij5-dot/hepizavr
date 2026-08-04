@@ -1380,90 +1380,48 @@ function showSalaryCard(encoded) {
 }
 
 async function loadPublicCard(cardFull) {
-  const parts = cardFull.split('|');
-  const cardId = parts[0];
-  const binId  = parts[1] || localStorage.getItem('hp_binId');
-
-  // Show loading
-  document.getElementById('pubView').innerHTML =
-    '<div style="font-family:sans-serif;padding:60px;text-align:center;color:#9333EA;font-size:18px">🦕 Завантаження...</div>';
-
+  // Card data is encoded directly in the URL — no server needed!
   try {
-    let data = null;
+    // Remove any |binId suffix (legacy)
+    const encoded = cardFull.split('|')[0];
+    
+    const base64 = encoded.replace(/-/g,'+').replace(/_/g,'/');
+    const pad = base64.length % 4 ? '='.repeat(4 - base64.length % 4) : '';
+    const binary = atob(base64 + pad);
+    const bytes = new Uint8Array(binary.length);
+    for (let i=0; i<binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const data = JSON.parse(new TextDecoder('utf-8').decode(bytes));
 
-    if (binId) {
-      // Try public read (no key needed)
-      let res = await fetch('https://api.jsonbin.io/v3/b/' + binId + '/latest');
-      if (!res.ok) {
-        // Try with key
-        const apiKey = localStorage.getItem('hp_apiKey') || '';
-        if (apiKey) {
-          res = await fetch('https://api.jsonbin.io/v3/b/' + binId + '/latest', {
-            headers: { 'X-Master-Key': apiKey }
-          });
-        }
-      }
-      if (res.ok) {
-        const json = await res.json();
-        data = json.record;
-      }
-    }
+    // Build a client object from compact data
+    const client = {
+      name: data.n,
+      direction: data.d,
+      dirKey: data.dk,
+      startDate: data.s,
+      endDate: data.e,
+      totalLessons: data.t,
+      crossMonth: data.cm,
+      lessonDates: (data.p||[]).map(l => l.dt),
+      id: data.n + '§' + (data.dk||''),
+    };
 
-    if (!data) {
-      // Try localStorage
-      const c = localStorage.getItem('hp_clients');
-      const a = localStorage.getItem('hp_attend');
-      if (c) data = { clients: JSON.parse(c), attend: JSON.parse(a||'{}') };
-    }
+    // Build attendance from compact data
+    const att = {};
+    (data.p||[]).forEach((l,i) => {
+      if (l.s === 'p') att[i] = 'present';
+      else if (l.s === 'a') att[i] = 'absent';
+    });
+    if (data.ph) att._photo = data.ph;
 
-    if (!data || !data.clients || !data.clients.length) {
-      document.getElementById('pubView').innerHTML =
-        '<div style="font-family:sans-serif;padding:60px;text-align:center">' +
-        '<div style="font-size:36px;margin-bottom:10px">🦕</div>' +
-        '<h2 style="color:#1a1a2e">Дані не знайдено</h2>' +
-        '<p style="color:#666">Зверніться до адміністратора клубу</p></div>';
-      return;
-    }
+    // Set globals for buildClientCardHTML
+    clients = [client];
+    attend = {};
+    attend[client.id] = att;
 
-    // Find client by encoded ID
-    let client = data.clients.find(c => encodeId(c.id) === cardId);
-
-    // Fallback: decode name from cardId
-    if (!client) {
-      try {
-        const base64 = cardId.replace(/-/g,'+').replace(/_/g,'/');
-        const pad = base64.length % 4 ? '='.repeat(4 - base64.length % 4) : '';
-        const binary = atob(base64 + pad);
-        const bytes = new Uint8Array(binary.length);
-        for (let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
-        const decoded = new TextDecoder('utf-8').decode(bytes);
-        const nameParts = decoded.split('§');
-        const name = nameParts[0];
-        const dirKey = nameParts[1];
-        if (name && name.length > 1) {
-          client = data.clients.find(c => c.name === name && c.dirKey === dirKey);
-          if (!client) client = data.clients.find(c => c.name === name);
-        }
-      } catch(e) {}
-    }
-
-    if (!client) {
-      document.getElementById('pubView').innerHTML =
-        '<div style="font-family:sans-serif;padding:60px;text-align:center">' +
-        '<div style="font-size:36px;margin-bottom:10px">🦕</div>' +
-        '<h2 style="color:#1a1a2e">Картку не знайдено</h2>' +
-        '<p style="color:#666">Посилання застаріло — попросіть нове у адміністратора</p></div>';
-      return;
-    }
-
-    // Set global data for buildClientCardHTML
-    clients = data.clients;
-    attend  = data.attend || {};
-
-    // Render beautiful HappyZavr card
-    const cardHtml = buildClientCardHTML(client);
+    // Render
+    const html = buildClientCardHTML(client);
     document.open();
-    document.write(cardHtml);
+    document.write(html);
     document.close();
 
   } catch(e) {
@@ -1475,52 +1433,6 @@ async function loadPublicCard(cardFull) {
   }
 }
 
-
-function renderPublicCard(c, att) {
-  const present = Object.values(att).filter(v=>v==='present').length;
-  const remain  = Math.max(0, c.totalLessons - present);
-  const pct     = Math.round(present / c.totalLessons * 100);
-  const status  = getStatus2(c, att);
-
-  document.getElementById('pubName').textContent = c.name;
-  document.getElementById('pubDir').textContent  = c.direction;
-  document.getElementById('pubDates').textContent= `${c.startDate} → ${c.endDate}${c.crossMonth?' ↗ між місяцями':''}`;
-  document.getElementById('pubProgNum').textContent = `${present} з ${c.totalLessons}`;
-  document.getElementById('pubProgFill').style.width = pct + '%';
-  document.getElementById('pubProgFill').className =
-    'pub-prog-fill ' + (remain<=0?'pf-done':remain<=2?'pf-warn':'pf-ok');
-
-  const remEl = document.getElementById('pubRemainNum');
-  remEl.textContent = remain;
-  remEl.style.color = remain<=0?'var(--red)':remain<=2?'var(--yel)':'var(--grn)';
-
-  const stEl = document.getElementById('pubStatus');
-  if (status==='active')  { stEl.className='pub-status st-active';  stEl.textContent='🟢 Абонемент активний'; }
-  if (status==='ending')  { stEl.className='pub-status st-ending';  stEl.textContent='🟡 Скоро закінчується — час поновити!'; }
-  if (status==='expired') { stEl.className='pub-status st-expired'; stEl.textContent='🔴 Абонемент вичерпано'; }
-
-  const dots = c.lessonDates.map((iso,i) => {
-    const s = att[i]||'';
-    const [y,mo,d] = iso.split('-');
-    const icon = s==='present'?'✓':s==='absent'?'✗':i+1;
-    const cls  = s==='present'?'present':s==='absent'?'absent':'';
-    return `<div class="pub-dot ${cls}">
-      <span>${icon}</span>
-      <span class="pdd">${d}.${mo}</span>
-    </div>`;
-  }).join('');
-  document.getElementById('pubDots').innerHTML = dots;
-}
-
-function getStatus2(c, att) {
-  const present = Object.values(att).filter(v=>v==='present').length;
-  const remain  = Math.max(0, c.totalLessons - present);
-  const endD    = parseDate(c.endDate);
-  const today   = new Date(); today.setHours(0,0,0,0);
-  if (remain<=0 || (endD && endD<today)) return 'expired';
-  if (remain<=2) return 'ending';
-  return 'active';
-}
 
 function encodeId(id) {
   const bytes = new TextEncoder().encode(id);
@@ -4293,13 +4205,11 @@ function renderCardLinks() {
     el.innerHTML='<p style="color:var(--text3);font-size:13px">Спочатку завантаж Excel</p>';
     return;
   }
-  const binId = cfg.binId || localStorage.getItem('hp_binId');
   el.innerHTML = clients.map(c=>{
     const rem = getRemain(c);
     const st  = getStatus(c);
     const em  = st==='active'?'🟢':st==='ending'?'🟡':'🔴';
-    const cardKey = encodeId(c.id);
-    const url = 'https://igorzagorij5-dot.github.io/hepizavr/#card=' + cardKey + (binId ? '|' + binId : '');
+    const url = encodeCardUrl(c);
     return `<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;
       background:var(--gray);border-radius:10px;margin-bottom:8px">
       <div style="flex:1;min-width:0">
@@ -4332,35 +4242,45 @@ function openCard(id) {
 function openClientCard(id) {
   const c = clients.find(x=>x.id===id);
   if (!c) return;
-  const binId = cfg.binId || localStorage.getItem('hp_binId');
-  if (binId) {
-    // Open via real URL with JSONBin — same link parents get
-    const url = 'https://igorzagorij5-dot.github.io/hepizavr/#card=' + encodeId(c.id) + '|' + binId;
-    const a = document.createElement('a');
-    a.href = url; a.target = '_blank'; a.rel = 'noopener';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  } else {
-    // No cloud — open embedded HTML
-    const win = window.open('', '_blank');
-    if (win) { win.document.write(buildClientCardHTML(c)); win.document.close(); }
-    else toast('⚠️ Налаштуй хмарне збереження для стабільних ссилок', 'warn');
-  }
+  const url = encodeCardUrl(c);
+  const a = document.createElement('a');
+  a.href = url; a.target = '_blank'; a.rel = 'noopener';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+function buildCardData(c) {
+  const att = getAtt(c.id);
+  return {
+    n: c.name,
+    d: c.direction,
+    dk: c.dirKey,
+    s: c.startDate,
+    e: c.endDate,
+    t: c.totalLessons,
+    cm: c.crossMonth||false,
+    p: (c.lessonDates||[]).map((dt,i) => ({
+      dt, s: att[i]==='present'?'p':att[i]==='absent'?'a':''
+    })),
+    ph: (attend[c.id]&&attend[c.id]._photo) ? attend[c.id]._photo : '',
+    u: new Date().toISOString()
+  };
+}
+
+function encodeCardUrl(c) {
+  const data = buildCardData(c);
+  const json = JSON.stringify(data);
+  const bytes = new TextEncoder().encode(json);
+  let binary = ''; bytes.forEach(b => binary += String.fromCharCode(b));
+  return 'https://igorzagorij5-dot.github.io/hepizavr/#card=' +
+    btoa(binary).replace(/[+]/g,'-').replace(/[/]/g,'_').replace(/=/g,'');
 }
 
 function copyCardLink(id) {
   const c = clients.find(x=>x.id===id);
   if (!c) return;
-
-  const binId = cfg.binId || localStorage.getItem('hp_binId');
-  if (binId) {
-    // Include bin ID in URL so parents can load data without API key!
-    const cardKey = encodeId(c.id);
-    const url = 'https://igorzagorij5-dot.github.io/hepizavr/#card=' + cardKey + '|' + binId;
-    copyText(url);
-    toast('✅ Посилання скопійовано! Відправ батькам у Telegram.', 'success');
-  } else {
-    toast('⚠️ Налаштуй хмарне збереження у вкладці Налаштування!', 'warn');
-  }
+  const url = encodeCardUrl(c);
+  copyText(url);
+  toast('✅ Посилання скопійовано!', 'success');
 }
 
 // ═══════════════════════════════════════════════════════
