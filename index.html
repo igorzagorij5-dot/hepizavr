@@ -1748,7 +1748,8 @@ async function pushCloud() {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        'X-Master-Key': key
+        'X-Master-Key': key,
+        'X-Bin-Private': 'false'
       },
       body: JSON.stringify(payload)
     });
