@@ -1169,13 +1169,16 @@ window.onload = async function() {
     document.getElementById('adminView').style.display = 'none';
     document.getElementById('pubView').style.display   = 'block';
     showSalaryCard(encoded);
-  } else if (hash.startsWith('#card=')) {
-    const cardFull = hash.slice(6); // may be "CARDKEY|BINID"
-    const cardId = cardFull.split('|')[0]; // just the card key
+  } else if (hash.startsWith('#c=') || hash.startsWith('#card=')) {
+    const isCompact = hash.startsWith('#c=');
+    const encoded = isCompact ? hash.slice(3) : hash.slice(6).split('|')[0];
     document.getElementById('adminView').style.display = 'none';
     document.getElementById('pubView').style.display   = 'block';
-    await loadPublicCard(cardFull); // pass full to extract binId
-    setInterval(() => loadPublicCard(cardFull), 30000);
+    if (isCompact) {
+      await loadCompactCard(encoded);
+    } else {
+      await loadPublicCard(hash.slice(6));
+    }
   } else {
     // Also check query params for backwards compat
     const params = new URLSearchParams(window.location.search);
@@ -1376,6 +1379,64 @@ function showSalaryCard(encoded) {
     document.getElementById('pubView').innerHTML = html;
   } catch(e) {
     document.getElementById('pubView').innerHTML = '<div style="padding:40px;text-align:center">Помилка зчитування</div>';
+  }
+}
+
+async function loadCompactCard(encoded) {
+  try {
+    const base64 = encoded.replace(/-/g,'+').replace(/_/g,'/');
+    const pad = base64.length % 4 ? '='.repeat(4 - base64.length % 4) : '';
+    const binary = atob(base64 + pad);
+    const bytes = new Uint8Array(binary.length);
+    for (let i=0; i<binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const compact = new TextDecoder('utf-8').decode(bytes);
+
+    // Parse compact format: name|dir|start|end|total|crossMonth|lessons|hasPhoto
+    const parts = compact.split('|');
+    const name = parts[0];
+    const direction = parts[1];
+    const startDate = parts[2];
+    const endDate = parts[3];
+    const totalLessons = parseInt(parts[4])||0;
+    const crossMonth = parts[5]==='1';
+    const lessonsStr = parts[6]||'';
+    const year = startDate ? '20'+startDate.slice(6) : '2026';
+
+    // Parse lessons: "MM-DDp,MM-DDa,MM-DD_,..."
+    const lessonParts = lessonsStr ? lessonsStr.split(',') : [];
+    const lessonDates = [];
+    const att = {};
+    lessonParts.forEach((l,i) => {
+      const status = l.slice(-1); // last char: p/a/_
+      const dateStr = l.slice(0,-1); // MM-DD
+      if (dateStr) {
+        lessonDates.push(year + '-' + dateStr);
+      } else {
+        lessonDates.push('slot-' + i);
+      }
+      if (status === 'p') att[i] = 'present';
+      else if (status === 'a') att[i] = 'absent';
+    });
+
+    const client = {
+      name, direction, startDate, endDate, totalLessons, crossMonth,
+      lessonDates, id: name + '§compact', dirKey: '',
+    };
+
+    clients = [client];
+    attend = {};
+    attend[client.id] = att;
+
+    const html = buildClientCardHTML(client);
+    document.open();
+    document.write(html);
+    document.close();
+
+  } catch(e) {
+    document.getElementById('pubView').innerHTML =
+      '<div style="font-family:sans-serif;padding:60px;text-align:center">' +
+      '<div style="font-size:36px;margin-bottom:10px">🦕</div>' +
+      '<h2>Помилка</h2><p style="color:#666">' + e.message + '</p></div>';
   }
 }
 
@@ -4267,11 +4328,29 @@ function buildCardData(c) {
 }
 
 function encodeCardUrl(c) {
-  const data = buildCardData(c);
-  const json = JSON.stringify(data);
-  const bytes = new TextEncoder().encode(json);
+  const att = getAtt(c.id);
+  // Ultra-compact format: name|dir|start|end|total|lessons_status
+  // lessons_status: each lesson = date:status (p/a/_)
+  const lessons = (c.lessonDates||[]).map((dt,i) => {
+    const s = att[i]==='present'?'p':att[i]==='absent'?'a':'_';
+    const d = dt.startsWith('slot-') ? '' : dt.slice(5); // remove year, keep MM-DD
+    return d+s;
+  }).join(',');
+
+  const compact = [
+    c.name,
+    c.direction,
+    c.startDate||'',
+    c.endDate||'',
+    c.totalLessons,
+    c.crossMonth?1:0,
+    lessons,
+    (attend[c.id]&&attend[c.id]._photo)?'1':'0'
+  ].join('|');
+
+  const bytes = new TextEncoder().encode(compact);
   let binary = ''; bytes.forEach(b => binary += String.fromCharCode(b));
-  return 'https://igorzagorij5-dot.github.io/hepizavr/#card=' +
+  return 'https://igorzagorij5-dot.github.io/hepizavr/#c=' +
     btoa(binary).replace(/[+]/g,'-').replace(/[/]/g,'_').replace(/=/g,'');
 }
 
