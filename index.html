@@ -1391,36 +1391,77 @@ async function loadCompactCard(encoded) {
     for (let i=0; i<binary.length; i++) bytes[i] = binary.charCodeAt(i);
     const compact = new TextDecoder('utf-8').decode(bytes);
 
-    // Parse compact format: name|dir|start|end|total|crossMonth|lessons|hasPhoto
-    const parts = compact.split('|');
-    const name = parts[0];
-    const direction = parts[1];
-    const startDate = parts[2];
-    const endDate = parts[3];
-    const totalLessons = parseInt(parts[4])||0;
-    const crossMonth = parts[5]==='1';
-    const lessonsStr = parts[6]||'';
-    const year = startDate ? '20'+startDate.slice(6) : '2026';
+    // Detect format by separator
+    const sep = compact.includes('~') ? '~' : '|';
+    const parts = compact.split(sep);
 
-    // Parse lessons: "MM-DDp,MM-DDa,MM-DD_,..."
-    const lessonParts = lessonsStr ? lessonsStr.split(',') : [];
-    const lessonDates = [];
-    const att = {};
-    lessonParts.forEach((l,i) => {
-      const status = l.slice(-1); // last char: p/a/_
-      const dateStr = l.slice(0,-1); // MM-DD
-      if (dateStr) {
-        lessonDates.push(year + '-' + dateStr);
+    let name, direction, dirKey, startDate, endDate, totalLessons, crossMonth, lessonDates, att;
+
+    if (sep === '~') {
+      // Micro format: name~dir~dk~DDMM~DDMM~YYYY~total~cm~statuses
+      name = parts[0];
+      direction = parts[1];
+      dirKey = parts[2];
+      const sd = parts[3]; // DDMM
+      const ed = parts[4]; // DDMM
+      const yr = parts[5] || '2026';
+      totalLessons = parseInt(parts[6])||0;
+      crossMonth = parts[7]==='1';
+      const statuses = parts[8]||'';
+
+      startDate = sd ? sd.slice(0,2)+'.'+sd.slice(2,4)+'.'+yr : '';
+      endDate   = ed ? ed.slice(0,2)+'.'+ed.slice(2,4)+'.'+yr : '';
+
+      // Generate lesson dates from dirKey config
+      const cfg = {dance1:[1,3,5],dance2:[1,3,5],school1:[2,4],school2:[2,4],logo_sub:[2,4]};
+      const wds = cfg[dirKey] || [1,3,5];
+      lessonDates = [];
+      att = {};
+
+      if (dirKey === 'logo' || !startDate) {
+        for (let i=0;i<totalLessons;i++) lessonDates.push('slot-'+i);
       } else {
-        lessonDates.push('slot-' + i);
+        const start = new Date(parseInt(yr), parseInt(sd.slice(2,4))-1, parseInt(sd.slice(0,2)));
+        let dt = new Date(start); let s=0;
+        while (lessonDates.length<totalLessons && s<600) {
+          if (wds.includes(dt.getDay())) {
+            lessonDates.push(dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0'));
+          }
+          dt = new Date(dt.getTime()+86400000); s++;
+        }
       }
-      if (status === 'p') att[i] = 'present';
-      else if (status === 'a') att[i] = 'absent';
-    });
+
+      // Apply statuses
+      for (let i=0; i<statuses.length && i<lessonDates.length; i++) {
+        if (statuses[i]==='p') att[i]='present';
+        else if (statuses[i]==='a') att[i]='absent';
+      }
+    } else {
+      // Old pipe format
+      name = parts[0];
+      direction = parts[1];
+      startDate = parts[2];
+      endDate = parts[3];
+      totalLessons = parseInt(parts[4])||0;
+      crossMonth = parts[5]==='1';
+      const lessonsStr = parts[6]||'';
+      const year = startDate ? startDate.slice(6) : '2026';
+      const lessonParts = lessonsStr ? lessonsStr.split(',') : [];
+      lessonDates = [];
+      att = {};
+      lessonParts.forEach((l,i) => {
+        const status = l.slice(-1);
+        const dateStr = l.slice(0,-1);
+        lessonDates.push(dateStr ? year+'-'+dateStr : 'slot-'+i);
+        if (status==='p') att[i]='present';
+        else if (status==='a') att[i]='absent';
+      });
+      dirKey = '';
+    }
 
     const client = {
-      name, direction, startDate, endDate, totalLessons, crossMonth,
-      lessonDates, id: name + '§compact', dirKey: '',
+      name, direction, dirKey, startDate, endDate, totalLessons, crossMonth,
+      lessonDates, id: name + '§compact',
     };
 
     clients = [client];
@@ -4329,24 +4370,18 @@ function buildCardData(c) {
 
 function encodeCardUrl(c) {
   const att = getAtt(c.id);
-  // Ultra-compact format: name|dir|start|end|total|lessons_status
-  // lessons_status: each lesson = date:status (p/a/_)
-  const lessons = (c.lessonDates||[]).map((dt,i) => {
-    const s = att[i]==='present'?'p':att[i]==='absent'?'a':'_';
-    const d = dt.startsWith('slot-') ? '' : dt.slice(5); // remove year, keep MM-DD
-    return d+s;
-  }).join(',');
+  // Micro format: name~dir~dk~DDMM~DDMM~total~statuses
+  // statuses: one char per lesson (p=present, a=absent, _=none)
+  const statuses = (c.lessonDates||[]).map((_,i) =>
+    att[i]==='present'?'p':att[i]==='absent'?'a':'_'
+  ).join('');
 
-  const compact = [
-    c.name,
-    c.direction,
-    c.startDate||'',
-    c.endDate||'',
-    c.totalLessons,
-    c.crossMonth?1:0,
-    lessons,
-    (attend[c.id]&&attend[c.id]._photo)?'1':'0'
-  ].join('|');
+  // Dates: DD.MM.YYYY → DDMM (4 chars)
+  const sd = (c.startDate||'').replace(/\./g,'').slice(0,4);
+  const ed = (c.endDate||'').replace(/\./g,'').slice(0,4);
+  const yr = (c.startDate||'').slice(6) || '2026';
+
+  const compact = c.name+'~'+(c.direction||'')+'~'+(c.dirKey||'')+'~'+sd+'~'+ed+'~'+yr+'~'+c.totalLessons+'~'+(c.crossMonth?1:0)+'~'+statuses;
 
   const bytes = new TextEncoder().encode(compact);
   let binary = ''; bytes.forEach(b => binary += String.fromCharCode(b));
