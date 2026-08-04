@@ -621,6 +621,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--gray);color:var(--
         <button class="btn btn-out" onclick="testCloud()">🧪 Перевірити з'єднання</button>
         <button class="btn btn-grn" onclick="pushCloud()">☁️ Зберегти в хмару зараз</button>
         <button class="btn btn-navy" onclick="loadFromCloud()">📥 Завантажити з хмари</button>
+        <button class="btn btn-out" onclick="makeBinPublic().then(()=>toast('✅ Бін публічний!','success'))">🌐 Зробити публічним</button>
       </div>
 
       <div id="setupStatus" class="setup-status ss-info" style="margin-top:10px;display:none"></div>
@@ -3702,6 +3703,23 @@ function sharePricePage(id) {
   toast(isShort ? '🔗 Коротка ссилка скопійована!' : '🔗 Ссилку скопійовано (налаштуй хмару для короткої)', 'success');
 }
 
+
+async function makeBinPublic() {
+  const key   = cfg.apiKey || localStorage.getItem('hp_apiKey');
+  const binId = cfg.binId  || localStorage.getItem('hp_binId');
+  if (!key || !binId) return;
+  try {
+    const res = await fetch('https://api.jsonbin.io/v3/b/' + binId + '/meta', {
+      method: 'PUT',
+      headers: {
+        'X-Master-Key': key,
+        'X-Bin-Private': 'false'
+      }
+    });
+    if (res.ok) console.log('Bin set to public');
+  } catch(e) { console.error('makeBinPublic error:', e); }
+}
+
 function uploadPhoto(clientId, input) {
   const file = input.files[0];
   if (!file) return;
@@ -4335,7 +4353,7 @@ function navTo(el) {
   if (page==='salary')  { initSalaryMonths(); renderSalary(); }
   if (page==='booking') { loadOrders(); renderBooking(); }
   if (page==='finance') { loadFinEntries(); initFinMonths(); renderFinance(); }
-  if (page==='setup')   { loadGoogleCfg(); }
+  if (page==='setup')   { loadGoogleCfg(); makeBinPublic(); }
   if (page==='price')   { loadPriceItems(); renderPriceGrid(); }
   closeSidebar();
 }
